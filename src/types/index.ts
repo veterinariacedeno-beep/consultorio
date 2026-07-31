@@ -27,13 +27,11 @@ export type AppointmentStatus = 'Pendiente' | 'Completada' | 'Cancelada';
 export const VACCINES: string[] = [
   'Parvovirus',
   'Parvovirus/Distemper',
-  'Rabia',
   'Múltiple',
-  'Quíntuple',
-  'Séxtuple',
-  'Leptospira',
+  'Refuerzo',
+  'Rabia',
   'Bordetella',
-  'Influenza Canina',
+  'Triple Felina',
 ];
 
 export interface Owner {
@@ -137,8 +135,8 @@ export interface Debt {
   totalAmount: number;
   date: string;
   payments: DebtPayment[];
-  /** The service type associated with this debt, used to calculate abono commissions. */
-  serviceType: ServiceType;
+  /** The service types associated with this debt, used to calculate abono commissions. */
+  serviceTypes: ServiceType[];
   createdAt: string;
 }
 
@@ -179,38 +177,6 @@ export interface PharmacySale {
   paymentMethod: PaymentMethod;
   date: string;
   notes: string;
-  createdAt: string;
-}
-
-export interface LabTestResult {
-  name: string;
-  result: 'Positivo' | 'Negativo' | '';
-  details: string;
-}
-
-export interface LabResult {
-  id: string;
-  petId: string;
-  ownerId: string;
-  date: string;
-  tests: LabTestResult[];
-  observations: string;
-  signatureData: string;
-  photoData?: string;
-  createdAt: string;
-}
-
-export interface HealthCertificate {
-  id: string;
-  petId: string;
-  ownerId: string;
-  date: string;
-  passport: string;
-  address: string;
-  exportTo: string;
-  healthStatus: string;
-  observations: string;
-  signatureData: string;
   createdAt: string;
 }
 

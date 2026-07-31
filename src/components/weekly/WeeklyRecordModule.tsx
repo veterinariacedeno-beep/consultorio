@@ -66,7 +66,7 @@ export default function WeeklyRecordModule() {
       date: payment.date,
       ownerId: debt.ownerId,
       petId: debt.petId,
-      serviceType: debt.serviceType ?? 'Otro',
+      serviceType: (debt.serviceTypes ?? ['Otro']).join(', '),
       amount: payment.amount,
       method: payment.method ?? 'Efectivo',
       debt,
@@ -153,7 +153,7 @@ export default function WeeklyRecordModule() {
                       {owner?.name ?? '—'} · {pet?.name ?? '—'}
                       <span className="ml-2 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold uppercase">Abono</span>
                     </p>
-                    <p className="text-slate-400 text-xs">{debt.serviceType ?? 'Otro'} · {payment.date} · {payment.method ?? 'Efectivo'}</p>
+                    <p className="text-slate-400 text-xs">{(debt.serviceTypes ?? ['Otro']).join(', ')} · {payment.date} · {payment.method ?? 'Efectivo'}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-slate-500 text-xs">${payment.amount.toFixed(2)}</p>

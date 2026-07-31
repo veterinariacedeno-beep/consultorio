@@ -44,7 +44,7 @@ export default function DebtsModule() {
     description: '',
     totalAmount: 0,
     date: new Date().toISOString().slice(0, 10),
-    serviceType: 'Consulta' as ServiceType,
+    serviceTypes: ['Consulta'] as ServiceType[],
   });
 
   // Client search results (for the main search bar)
@@ -118,13 +118,13 @@ export default function DebtsModule() {
 
   function openAdd() {
     setEditing(null);
-    setForm({ ownerId: selectedOwnerId || '', petId: '', description: '', totalAmount: 0, date: new Date().toISOString().slice(0, 10), serviceType: 'Consulta' });
+    setForm({ ownerId: selectedOwnerId || '', petId: '', description: '', totalAmount: 0, date: new Date().toISOString().slice(0, 10), serviceTypes: ['Consulta'] });
     setShowForm(true);
   }
 
   function openEdit(d: Debt) {
     setEditing(d);
-    setForm({ ownerId: d.ownerId, petId: d.petId, description: d.description, totalAmount: d.totalAmount, date: d.date, serviceType: d.serviceType ?? 'Consulta' });
+    setForm({ ownerId: d.ownerId, petId: d.petId, description: d.description, totalAmount: d.totalAmount, date: d.date, serviceTypes: d.serviceTypes });
     setShowForm(true);
   }
 
@@ -132,7 +132,7 @@ export default function DebtsModule() {
     ev.preventDefault();
     if (!form.ownerId || !form.petId || form.totalAmount <= 0) return;
     if (editing) {
-      updateDebt({ ...editing, ownerId: form.ownerId, petId: form.petId, description: form.description, totalAmount: form.totalAmount, date: form.date, serviceType: form.serviceType });
+      updateDebt({ ...editing, ownerId: form.ownerId, petId: form.petId, description: form.description, totalAmount: form.totalAmount, date: form.date, serviceTypes: form.serviceTypes });
     } else {
       addDebt({
         id: crypto.randomUUID(),
@@ -142,7 +142,7 @@ export default function DebtsModule() {
         totalAmount: form.totalAmount,
         date: form.date,
         payments: [],
-        serviceType: form.serviceType,
+        serviceTypes: form.serviceTypes,
         createdAt: new Date().toISOString(),
       });
     }
@@ -600,15 +600,26 @@ export default function DebtsModule() {
                 />
               </div>
               <div>
-                <label className="block text-slate-600 text-sm font-medium mb-1.5">Servicio Realizado *</label>
-                <select
-                  value={form.serviceType}
-                  onChange={e => setForm(prev => ({ ...prev, serviceType: e.target.value as ServiceType }))}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <label className="block text-slate-600 text-sm font-medium mb-1.5">Servicios Realizados *</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {SERVICE_TYPES.map(t => {
+                    const selected = form.serviceTypes.includes(t);
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setForm(prev => {
+                          const has = prev.serviceTypes.includes(t);
+                          const next = has ? prev.serviceTypes.filter(x => x !== t) : [...prev.serviceTypes, t];
+                          return { ...prev, serviceTypes: next.length === 0 ? [t] : next };
+                        })}
+                        className={`px-2 py-1.5 rounded-md text-xs font-medium border transition-all ${selected ? 'bg-red-600 border-red-600 text-white' : 'border-slate-200 text-slate-600 hover:border-red-300 hover:bg-red-50'}`}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
                 <p className="text-slate-400 text-xs mt-1">La comisión del ayudante se calcula sobre los abonos, no sobre el total.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
