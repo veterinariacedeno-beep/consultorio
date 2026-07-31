@@ -93,6 +93,15 @@ function save<T>(key: string, value: T): void {
   }
 }
 
+/** Migrate legacy `serviceType` (singular) to `serviceTypes[]` on debts */
+function migrateDebts(raw: Debt[]): Debt[] {
+  return raw.map(d => {
+    if (Array.isArray(d.serviceTypes) && d.serviceTypes.length > 0) return d;
+    const legacy = (d as unknown as Record<string, unknown>)['serviceType'] as ServiceType | undefined;
+    return { ...d, serviceTypes: legacy ? [legacy] : ['Consulta' as ServiceType] };
+  });
+}
+
 /** Migrate legacy `type` field to `types[]` and ensure `payments` exists */
 function migrateServices(raw: ServiceRecord[]): ServiceRecord[] {
   return raw.map(s => {
@@ -131,7 +140,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     load('vc_pharmacy_sales', [])
   );
   const [expenses, setExpenses] = useState<Expense[]>(() => load('vc_expenses', []));
-  const [debts, setDebts] = useState<Debt[]>(() => load('vc_debts', []));
+  const [debts, setDebts] = useState<Debt[]>(() => migrateDebts(load('vc_debts', [])));
 
   useEffect(() => { save('vc_owners', owners); }, [owners]);
   useEffect(() => { save('vc_pets', pets); }, [pets]);
