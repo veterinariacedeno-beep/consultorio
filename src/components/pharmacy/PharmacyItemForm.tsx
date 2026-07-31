@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { X, Image as ImageIcon } from 'lucide-react';
 import type { PharmacyItem } from '../../types';
+import { compressImage } from '../../utils/image';
 
 interface Props {
   initial?: PharmacyItem;
@@ -27,7 +28,9 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
   const set = <K extends keyof PharmacyItem>(k: K, v: PharmacyItem[K]) =>
     setForm(prev => ({ ...prev, [k]: v }));
 
-  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  const [imageLoading, setImageLoading] = useState(false);
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -38,11 +41,15 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
       alert('La imagen no puede superar los 5 MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      set('imageUrl', reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setImageLoading(true);
+    try {
+      const compressed = await compressImage(file);
+      set('imageUrl', compressed);
+    } catch {
+      alert('No se pudo procesar la imagen.');
+    } finally {
+      setImageLoading(false);
+    }
   }
 
   function removeImage() {
@@ -91,10 +98,11 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
-                className="w-full flex flex-col items-center gap-2 py-8 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-teal-400 hover:bg-teal-50/50 transition-all"
+                disabled={imageLoading}
+                className="w-full flex flex-col items-center gap-2 py-8 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:border-teal-400 hover:bg-teal-50/50 transition-all disabled:opacity-60 disabled:cursor-wait"
               >
                 <ImageIcon size={28} />
-                <span className="text-sm font-medium">Subir foto del producto</span>
+                <span className="text-sm font-medium">{imageLoading ? 'Procesando...' : 'Subir foto del producto'}</span>
                 <span className="text-xs text-slate-400">PNG, JPG — máx. 5 MB</span>
               </button>
             )}

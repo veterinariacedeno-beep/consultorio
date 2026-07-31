@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Pencil, X, CreditCard, DollarSign, Calendar, Search, Check, ChevronDown, ChevronRight, User, PawPrint, Banknote, Smartphone, ArrowLeftRight } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, CreditCard, DollarSign, Calendar, Search, Check, ChevronDown, ChevronRight, User, PawPrint } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Debt, DebtPayment, ServiceType, PaymentMethod } from '../../types';
 
@@ -23,7 +23,7 @@ const SERVICE_TYPES: ServiceType[] = [
 const PAYMENT_METHODS: PaymentMethod[] = ['Efectivo', 'Yappy', 'Transferencia'];
 
 export default function DebtsModule() {
-  const { debts, owners, pets, addDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment } = useApp();
+  const { debts, owners, pets, addDebt, updateDebt, deleteDebt, addDebtPayment, addDebtPayments, deleteDebtPayment } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Debt | null>(null);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null);
@@ -32,10 +32,9 @@ export default function DebtsModule() {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [expandedPetId, setExpandedPetId] = useState<string | null>(null);
   const [abonoPetId, setAbonoPetId] = useState<string | null>(null);
-  const [abonoForm, setAbonoForm] = useState<{ amount: number; date: string; method: PaymentMethod }>({
-    amount: 0,
+  const [abonoForm, setAbonoForm] = useState<{ date: string; splits: { method: PaymentMethod; amount: number }[] }>({
     date: new Date().toISOString().slice(0, 10),
-    method: 'Efectivo',
+    splits: [{ method: 'Efectivo', amount: 0 }],
   });
 
   const [form, setForm] = useState({
@@ -149,18 +148,52 @@ export default function DebtsModule() {
     setShowForm(false);
   }
 
+  const abonoTotal = abonoForm.splits.reduce((s, p) => s + p.amount, 0);
+
+  function addAbonoSplit() {
+    const usedMethods = abonoForm.splits.map(s => s.method);
+    const available = PAYMENT_METHODS.find(m => !usedMethods.includes(m));
+    if (!available) return;
+    setAbonoForm(prev => ({ ...prev, splits: [...prev.splits, { method: available, amount: 0 }] }));
+  }
+
+  function updateAbonoSplit(idx: number, field: 'method' | 'amount', value: PaymentMethod | number) {
+    setAbonoForm(prev => ({
+      ...prev,
+      splits: prev.splits.map((s, i) => i === idx ? { ...s, [field]: value } : s),
+    }));
+  }
+
+  function removeAbonoSplit(idx: number) {
+    setAbonoForm(prev => ({ ...prev, splits: prev.splits.filter((_, i) => i !== idx) }));
+  }
+
   function handleAddAbono(debtId: string) {
-    if (abonoForm.amount <= 0) return;
-    const payment: DebtPayment = {
-      id: crypto.randomUUID(),
-      amount: abonoForm.amount,
-      date: abonoForm.date,
-      createdAt: new Date().toISOString(),
-      commissionEarned: 0,
-      method: abonoForm.method,
-    };
-    addDebtPayment(debtId, payment);
-    setAbonoForm({ amount: 0, date: new Date().toISOString().slice(0, 10), method: 'Efectivo' });
+    const validSplits = abonoForm.splits.filter(s => s.amount > 0);
+    if (validSplits.length === 0) return;
+    const now = new Date().toISOString();
+    if (validSplits.length === 1) {
+      const s = validSplits[0];
+      addDebtPayment(debtId, {
+        id: crypto.randomUUID(),
+        amount: s.amount,
+        date: abonoForm.date,
+        createdAt: now,
+        commissionEarned: 0,
+        method: s.method,
+      });
+    } else {
+      const payments: DebtPayment[] = validSplits.map(s => ({
+        id: crypto.randomUUID(),
+        amount: s.amount,
+        date: abonoForm.date,
+        createdAt: now,
+        commissionEarned: 0,
+        method: s.method,
+      }));
+      addDebtPayments(debtId, payments);
+    }
+    setAbonoForm({ date: new Date().toISOString().slice(0, 10), splits: [{ method: 'Efectivo', amount: 0 }] });
     setAbonoPetId(null);
   }
 
@@ -353,55 +386,70 @@ export default function DebtsModule() {
                               {/* Quick abono with payment method (Req 4) */}
                               {showAbono ? (
                                 <div className="bg-white rounded-lg border border-green-200 p-2.5 space-y-2">
-                                  <div className="flex items-end gap-2">
-                                    <div className="flex-1">
-                                      <label className="block text-slate-500 text-xs mb-0.5">Monto</label>
-                                      <div className="relative">
-                                        <DollarSign size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          step="0.01"
-                                          value={abonoForm.amount}
-                                          onChange={e => setAbonoForm(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-                                          placeholder="0.00"
-                                          className="w-full pl-6 pr-2 py-1.5 rounded-md border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-slate-500 text-xs mb-0.5">Fecha</label>
-                                      <input
-                                        type="date"
-                                        value={abonoForm.date}
-                                        onChange={e => setAbonoForm(prev => ({ ...prev, date: e.target.value }))}
-                                        className="px-2 py-1.5 rounded-md border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                                      />
-                                    </div>
-                                  </div>
                                   <div>
-                                    <label className="block text-slate-500 text-xs mb-0.5">Método de Pago</label>
-                                    <div className="grid grid-cols-3 gap-1.5">
-                                      {PAYMENT_METHODS.map(m => {
-                                        const active = abonoForm.method === m;
-                                        const icon = m === 'Efectivo' ? <Banknote size={12} /> : m === 'Yappy' ? <Smartphone size={12} /> : <ArrowLeftRight size={12} />;
-                                        return (
+                                    <label className="block text-slate-500 text-xs mb-0.5">Fecha</label>
+                                    <input
+                                      type="date"
+                                      value={abonoForm.date}
+                                      onChange={e => setAbonoForm(prev => ({ ...prev, date: e.target.value }))}
+                                      className="px-2 py-1.5 rounded-md border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                                    />
+                                  </div>
+                                  {abonoForm.splits.map((split, idx) => {
+                                    const usedMethods = abonoForm.splits.map((s, i) => i !== idx ? s.method : null).filter(Boolean);
+                                    return (
+                                      <div key={idx} className="flex items-center gap-1.5">
+                                        <select
+                                          value={split.method}
+                                          onChange={e => updateAbonoSplit(idx, 'method', e.target.value as PaymentMethod)}
+                                          className="flex-1 px-2 py-1.5 rounded-md border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                                        >
+                                          {PAYMENT_METHODS.map(m => (
+                                            <option key={m} value={m} disabled={usedMethods.includes(m)}>{m}</option>
+                                          ))}
+                                        </select>
+                                        <div className="relative flex-1">
+                                          <DollarSign size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={split.amount || ''}
+                                            onChange={e => updateAbonoSplit(idx, 'amount', parseFloat(e.target.value) || 0)}
+                                            placeholder="0.00"
+                                            className="w-full pl-6 pr-2 py-1.5 rounded-md border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                                          />
+                                        </div>
+                                        {abonoForm.splits.length > 1 && (
                                           <button
-                                            key={m}
                                             type="button"
-                                            onClick={() => setAbonoForm(prev => ({ ...prev, method: m }))}
-                                            className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${active ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                            onClick={() => removeAbonoSplit(idx)}
+                                            className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50"
                                           >
-                                            {icon} {m}
+                                            <Trash2 size={13} />
                                           </button>
-                                        );
-                                      })}
-                                    </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                  {abonoForm.splits.length < 3 && (
+                                    <button
+                                      type="button"
+                                      onClick={addAbonoSplit}
+                                      className="flex items-center gap-1 text-green-600 text-xs font-medium hover:underline"
+                                    >
+                                      <Plus size={12} /> Añadir método
+                                    </button>
+                                  )}
+                                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                                    <span className="text-slate-500 text-xs">Total:</span>
+                                    <span className={`font-bold text-sm ${abonoTotal > 0 ? 'text-green-600' : 'text-slate-400'}`}>${abonoTotal.toFixed(2)}</span>
                                   </div>
                                   <div className="flex gap-2">
                                     <button
                                       onClick={() => handleAddAbono(d.id)}
-                                      className="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                                      disabled={abonoTotal <= 0}
+                                      className="flex-1 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       <Plus size={14} /> Registrar Abono
                                     </button>
@@ -416,7 +464,7 @@ export default function DebtsModule() {
                               ) : (
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={() => { setAbonoPetId(d.id); setAbonoForm({ amount: 0, date: new Date().toISOString().slice(0, 10), method: 'Efectivo' }); }}
+                                    onClick={() => { setAbonoPetId(d.id); setAbonoForm({ date: new Date().toISOString().slice(0, 10), splits: [{ method: 'Efectivo', amount: 0 }] }); }}
                                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors"
                                   >
                                     <Plus size={12} /> Abonar

@@ -49,6 +49,7 @@ interface AppContextValue {
   updateDebt: (d: Debt) => void;
   deleteDebt: (id: string) => void;
   addDebtPayment: (debtId: string, payment: DebtPayment) => void;
+  addDebtPayments: (debtId: string, payments: DebtPayment[]) => void;
   deleteDebtPayment: (debtId: string, paymentId: string) => void;
 
   getCurrentWeekServices: () => ServiceRecord[];
@@ -85,7 +86,11 @@ function load<T>(key: string, fallback: T): T {
 }
 
 function save<T>(key: string, value: T): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    alert('El almacenamiento local está lleno');
+  }
 }
 
 /** Migrate legacy `type` field to `types[]` and ensure `payments` exists */
@@ -245,6 +250,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const commissionEarned = getAbanoCommissionAtPayment(d.serviceTypes, payment.amount, d.totalAmount, totalPaidBefore);
       return { ...d, payments: [...d.payments, { ...payment, commissionEarned }] };
     })), [getAbanoCommissionAtPayment]);
+
+  const addDebtPayments = useCallback((debtId: string, newPayments: DebtPayment[]) =>
+    setDebts(prev => prev.map(d => {
+      if (d.id !== debtId) return d;
+      let totalPaidBefore = d.payments.reduce((s, p) => s + p.amount, 0);
+      const withCommissions = newPayments.map(p => {
+        const commissionEarned = getAbanoCommissionAtPayment(d.serviceTypes, p.amount, d.totalAmount, totalPaidBefore);
+        totalPaidBefore += p.amount;
+        return { ...p, commissionEarned };
+      });
+      return { ...d, payments: [...d.payments, ...withCommissions] };
+    })), [getAbanoCommissionAtPayment]);
   const deleteDebtPayment = useCallback((debtId: string, paymentId: string) =>
     setDebts(prev => prev.map(d => d.id === debtId ? { ...d, payments: d.payments.filter(p => p.id !== paymentId) } : d)), []);
 
@@ -372,7 +389,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addPharmacyItem, updatePharmacyItem, deletePharmacyItem,
     addPharmacySale, deletePharmacySale,
     addExpense, updateExpense, deleteExpense,
-    addDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment,
+    addDebt, updateDebt, deleteDebt, addDebtPayment, addDebtPayments, deleteDebtPayment,
     getCurrentWeekServices, getWeekServicesForDate, getWeekAbonosForDate, getWeeklyTotals, getExpensesForWeek, getServiceCommission, getAbanoCommissionAtPayment, getHelperWeeklyPay,
   };
 
