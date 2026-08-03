@@ -12,6 +12,7 @@ import {
   ShoppingBag,
   CreditCard,
   CalendarDays,
+  BarChart3,
 } from 'lucide-react';
 
 export type ActiveView =
@@ -23,7 +24,8 @@ export type ActiveView =
   | 'pharmacy'
   | 'expenses'
   | 'debts'
-  | 'weekly';
+  | 'weekly'
+  | 'financial-report';
 
 interface NavItem {
   id: ActiveView;
@@ -39,6 +41,7 @@ const navItems: NavItem[] = [
   { id: 'billing', label: 'Facturación', icon: <Receipt size={20} /> },
   { id: 'pharmacy', label: 'Farmacia', icon: <Pill size={20} /> },
   { id: 'weekly', label: 'Registro Semanal', icon: <CalendarDays size={20} /> },
+  { id: 'financial-report', label: 'Reporte Financiero', icon: <BarChart3 size={20} /> },
   { id: 'expenses', label: 'Gastos / Salidas', icon: <ShoppingBag size={20} /> },
   { id: 'debts', label: 'Deudas', icon: <CreditCard size={20} /> },
 ];

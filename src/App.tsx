@@ -10,6 +10,7 @@ import PharmacyModule from './components/pharmacy/PharmacyModule';
 import ExpensesModule from './components/expenses/ExpensesModule';
 import DebtsModule from './components/debts/DebtsModule';
 import WeeklyRecordModule from './components/weekly/WeeklyRecordModule';
+import FinancialReportModule from './components/financial/FinancialReportModule';
 
 function AppInner() {
   const [view, setView] = useState<ActiveView>('dashboard');
@@ -34,6 +35,8 @@ function AppInner() {
         return <DebtsModule />;
       case 'weekly':
         return <WeeklyRecordModule />;
+      case 'financial-report':
+        return <FinancialReportModule />;
     }
   }
 
