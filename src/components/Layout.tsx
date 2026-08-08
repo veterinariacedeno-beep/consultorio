@@ -13,6 +13,8 @@ import {
   CreditCard,
   CalendarDays,
   BarChart3,
+  FlaskConical,
+  Award,
 } from 'lucide-react';
 
 export type ActiveView =
@@ -25,7 +27,9 @@ export type ActiveView =
   | 'expenses'
   | 'debts'
   | 'weekly'
-  | 'financial-report';
+  | 'financial-report'
+  | 'laboratorio'
+  | 'certificados';
 
 interface NavItem {
   id: ActiveView;
@@ -42,6 +46,8 @@ const navItems: NavItem[] = [
   { id: 'pharmacy', label: 'Farmacia', icon: <Pill size={20} /> },
   { id: 'weekly', label: 'Registro Semanal', icon: <CalendarDays size={20} /> },
   { id: 'financial-report', label: 'Reporte Financiero', icon: <BarChart3 size={20} /> },
+  { id: 'laboratorio', label: 'Laboratorio', icon: <FlaskConical size={20} /> },
+  { id: 'certificados', label: 'Certificados', icon: <Award size={20} /> },
   { id: 'expenses', label: 'Gastos / Salidas', icon: <ShoppingBag size={20} /> },
   { id: 'debts', label: 'Deudas', icon: <CreditCard size={20} /> },
 ];

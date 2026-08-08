@@ -11,6 +11,8 @@ import ExpensesModule from './components/expenses/ExpensesModule';
 import DebtsModule from './components/debts/DebtsModule';
 import WeeklyRecordModule from './components/weekly/WeeklyRecordModule';
 import FinancialReportModule from './components/financial/FinancialReportModule';
+import LaboratoryModule from './components/laboratorio/LaboratoryModule';
+import CertificadosModule from './components/certificados/CertificadosModule';
 
 function AppInner() {
   const [view, setView] = useState<ActiveView>('dashboard');
@@ -37,6 +39,10 @@ function AppInner() {
         return <WeeklyRecordModule />;
       case 'financial-report':
         return <FinancialReportModule />;
+      case 'laboratorio':
+        return <LaboratoryModule />;
+      case 'certificados':
+        return <CertificadosModule />;
     }
   }
 
