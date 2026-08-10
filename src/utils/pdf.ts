@@ -2,7 +2,6 @@ import { jsPDF } from "jspdf";
 import type { LabReportData, CertificateData } from "@/types";
 import { EXAM_TEMPLATES, RESULT_TEXTS } from "@/data/exams";
 import { CLINIC, DOCTOR, DECLARATION_TEXT, DECLARATION_REQUISITES } from "@/data/constants";
-import signatureStamp from "@/assets/signature-stamp.svg?raw";
 
 const AZUL_MARINO = "#1a365d";
 const GRIS_TEXTO = "#334155";
@@ -51,7 +50,7 @@ function drawHeader(doc: jsPDF): number {
   return 48;
 }
 
-function drawSignature(doc: jsPDF, y: number, showSignature: boolean, customSignature?: string | null) {
+function drawSignature(doc: jsPDF, y: number, customSignature?: string | null) {
   const firmaY = Math.max(y + 10, 235);
   const sigX = 15;
   const sigW = 60;
@@ -59,32 +58,14 @@ function drawSignature(doc: jsPDF, y: number, showSignature: boolean, customSign
   const imgW = 45;
   const imgH = 20;
 
-  if (showSignature) {
-    const imagePlaced = (() => {
-      if (customSignature) {
-        for (const fmt of ["PNG", "JPEG", "JPG"] as const) {
-          try {
-            doc.addImage(customSignature, fmt, sigX, firmaY - imgH, imgW, imgH);
-            return true;
-          } catch {
-            // try next format
-          }
-        }
-        return false;
-      }
+  if (customSignature) {
+    for (const fmt of ["PNG", "JPEG", "JPG"] as const) {
       try {
-        doc.addSvgAsImage(signatureStamp, sigX, firmaY - imgH, sigW, imgH, undefined, true);
-        return true;
+        doc.addImage(customSignature, fmt, sigX, firmaY - imgH, imgW, imgH);
+        break;
       } catch {
-        return false;
+        // try next format
       }
-    })();
-
-    if (!imagePlaced) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(18);
-      setTextColor(doc, AZUL_MARINO);
-      doc.text(DOCTOR.name, sigCenter, firmaY - 4, { align: "center" });
     }
   }
 
@@ -277,7 +258,7 @@ function generateLabPDF(data: LabReportData, customSignature?: string | null): j
     y += colH + 8;
   }
 
-  drawSignature(doc, y, true, customSignature);
+  drawSignature(doc, y, customSignature);
   return doc;
 }
 
@@ -407,7 +388,7 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   doc.text(issueLines, MARGIN, y);
   y += issueLines.length * 4 + 8;
 
-  drawSignature(doc, y, true, customSignature);
+  drawSignature(doc, y, customSignature);
   return doc;
 }
 

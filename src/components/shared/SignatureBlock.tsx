@@ -1,4 +1,3 @@
-import signatureStamp from "@/assets/signature-stamp.svg";
 import type { FC } from "react";
 
 interface Props {
@@ -7,15 +6,13 @@ interface Props {
 }
 
 const SignatureBlock: FC<Props> = ({ showSignature, customSignature }) => {
-  const imgSrc = customSignature || signatureStamp;
-
   return (
     <div className="signature-block">
       <div className="flex flex-col items-center">
-        {showSignature ? (
+        {showSignature && customSignature ? (
           <>
             <img
-              src={imgSrc}
+              src={customSignature}
               alt="Firma y sello del médico veterinario"
               className="mb-1 h-20 w-56 object-contain object-left"
             />

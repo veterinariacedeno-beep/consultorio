@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Download, Printer, PenLine, Upload, X } from "lucide-react";
+import { Download, Printer, Upload, X } from "lucide-react";
 import type { CertificateData } from "@/types";
 import { MONTHS_ES } from "@/data/constants";
 import CertificateForm from "./CertificateForm";
@@ -30,7 +30,6 @@ const initialCert: CertificateData = {
 
 export default function CertificadosModule() {
   const [certData, setCertData] = useState<CertificateData>(initialCert);
-  const [showSignature, setShowSignature] = useState(true);
   const [customSignature, setCustomSignature] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [scale, setScale] = useState(1);
@@ -77,21 +76,6 @@ export default function CertificadosModule() {
           <CertificateForm data={certData} onChange={setCertData} />
 
           <div className="mt-6 space-y-4 border-t border-slate-200 pt-4">
-            <label className="flex cursor-pointer items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
-              <span className="flex items-center gap-2 text-sm font-semibold text-[#1a365d]">
-                <PenLine className="h-4 w-4" />
-                Firma Digital
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowSignature((s) => !s)}
-                className={`relative h-6 w-11 rounded-full transition ${showSignature ? "bg-[#2b6cb0]" : "bg-gray-300"}`}
-                aria-pressed={showSignature}
-              >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${showSignature ? "left-[22px]" : "left-0.5"}`} />
-              </button>
-            </label>
-
             <div className="rounded-lg bg-slate-50 px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-semibold text-[#1a365d]">
@@ -117,7 +101,7 @@ export default function CertificadosModule() {
                 {customSignature ? (
                   <img src={customSignature} alt="Firma personalizada" className="h-12 w-32 rounded border border-gray-300 bg-white object-contain p-1" />
                 ) : (
-                  <span className="text-xs text-gray-500">Usando firma predeterminada del Dr. Cedeño</span>
+                  <span className="text-xs text-gray-500">Sin firma digital — se dejará espacio para firma manuscrita</span>
                 )}
               </div>
             </div>
@@ -147,7 +131,7 @@ export default function CertificadosModule() {
           <div ref={previewWrapRef} className="overflow-auto rounded-lg bg-slate-300 p-3" style={{ maxHeight: "calc(100vh - 220px)" }}>
             <div className="preview-scale mx-auto" style={{ transform: `scale(${scale})`, width: 794, height: 1123 * scale }}>
               <div style={{ transformOrigin: "top left" }}>
-                <CertificatePreview data={certData} showSignature={showSignature} customSignature={customSignature} />
+                <CertificatePreview data={certData} showSignature={!!customSignature} customSignature={customSignature} />
               </div>
             </div>
           </div>

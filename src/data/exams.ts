@@ -1,4 +1,18 @@
-import type { ExamTemplate, ResultValue } from "@/types";
+import type { ExamTemplate, ResultValue, ParameterResult } from "@/types";
+
+export function buildDefaultResults(examId: string): Record<string, ParameterResult> {
+  const exam = EXAM_TEMPLATES.find((e) => e.id === examId);
+  if (!exam || exam.type !== "standard") return {};
+  const results: Record<string, ParameterResult> = {};
+  for (const param of exam.parameters) {
+    results[param.id] = {
+      value: "NEGATIVO",
+      customValue: "",
+      details: RESULT_TEXTS[param.id]?.NEGATIVO ?? "",
+    };
+  }
+  return results;
+}
 
 export const RESULT_TEXTS: Record<string, Record<Exclude<ResultValue, "PERSONALIZADO">, string>> = {
   dirofilaria: {

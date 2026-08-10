@@ -1,7 +1,7 @@
 import type { FC, ChangeEvent } from "react";
 import { FileText, Upload, X } from "lucide-react";
 import type { LabReportData, ParameterResult, ResultValue } from "@/types";
-import { EXAM_TEMPLATES, RESULT_TEXTS } from "@/data/exams";
+import { EXAM_TEMPLATES, RESULT_TEXTS, buildDefaultResults } from "@/data/exams";
 
 interface Props {
   data: LabReportData;
@@ -15,7 +15,7 @@ const LabReportForm: FC<Props> = ({ data, onChange }) => {
 
   const handleExamChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const examId = e.target.value;
-    onChange({ ...data, examId, results: {} });
+    onChange({ ...data, examId, results: buildDefaultResults(examId) });
   };
 
   const updateResult = (paramId: string, patch: Partial<ParameterResult>) => {
