@@ -1,332 +1,153 @@
-import { useState, useMemo } from 'react';
-import { FlaskConical, Plus, Trash2, FileDown, Search, Settings } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import { drawHeader, drawFooter, loadClinicInfo, saveClinicInfo, formatDate, todayStr, type ClinicInfo } from './pdfUtils';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { FileText, Download, Printer, PenLine, Upload, X } from "lucide-react";
+import type { LabReportData } from "@/types";
+import { EXAM_TEMPLATES } from "@/data/exams";
+import LabReportForm from "./LabReportForm";
+import LabReportPreview from "./LabReportPreview";
+import { downloadLabPDF, printLabPDF } from "@/utils/pdf";
 
-export interface LabTest {
-  id: string;
-  petName: string;
-  ownerName: string;
-  date: string;
-  testType: string;
-  results: string;
-  observations: string;
-  createdAt: string;
-}
+const today = new Date();
+const todayStr = today.toISOString().slice(0, 10);
 
-const STORAGE_KEY = 'lab_tests';
-
-const TEST_TYPES = [
-  'Hematología Completa',
-  'Bioquímica Sanguínea',
-  'Coprológico',
-  'Urianálisis',
-  'Cultivo Bacteriológico',
-  'Serología',
-  'PCR / Diagnóstico Molecular',
-  'Examen de Piel / Ectoparásitos',
-  'Otro',
-];
-
-function loadTests(): LabTest[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTests(tests: LabTest[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tests));
-}
+const initialLab: LabReportData = {
+  patientName: "",
+  ownerName: "",
+  date: todayStr,
+  examId: EXAM_TEMPLATES[0].id,
+  results: {},
+  observations: "",
+  photo: null,
+  photoName: null,
+  coproFindings: "",
+  coproSample: "",
+  coproTreatment: "",
+};
 
 export default function LaboratoryModule() {
-  const [tests, setTests] = useState<LabTest[]>(() => loadTests());
-  const [search, setSearch] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [clinic, setClinic] = useState<ClinicInfo>(() => loadClinicInfo());
-  const [form, setForm] = useState<Omit<LabTest, 'id' | 'createdAt'>>({
-    petName: '',
-    ownerName: '',
-    date: todayStr(),
-    testType: TEST_TYPES[0],
-    results: '',
-    observations: '',
-  });
+  const [labData, setLabData] = useState<LabReportData>(initialLab);
+  const [showSignature, setShowSignature] = useState(true);
+  const [customSignature, setCustomSignature] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [scale, setScale] = useState(1);
+  const previewWrapRef = useRef<HTMLDivElement>(null);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return tests.filter(t =>
-      t.petName.toLowerCase().includes(q) ||
-      t.ownerName.toLowerCase().includes(q) ||
-      t.testType.toLowerCase().includes(q),
-    ).sort((a, b) => b.date.localeCompare(a.date));
-  }, [tests, search]);
-
-  function persist(next: LabTest[]) {
-    setTests(next);
-    saveTests(next);
-  }
-
-  function handleAdd() {
-    if (!form.petName.trim() || !form.ownerName.trim()) return;
-    const test: LabTest = {
-      ...form,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    const compute = () => {
+      const wrap = previewWrapRef.current;
+      if (!wrap) return;
+      const available = wrap.clientWidth - 24;
+      const s = Math.min(available / 794, 1);
+      setScale(s > 0 ? s : 0.3);
     };
-    persist([test, ...tests]);
-    setForm({ petName: '', ownerName: '', date: todayStr(), testType: TEST_TYPES[0], results: '', observations: '' });
-    setShowForm(false);
-  }
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
 
-  function handleDelete(id: string) {
-    persist(tests.filter(t => t.id !== id));
-  }
+  const handleDownload = useCallback(() => {
+    setExporting(true);
+    try {
+      downloadLabPDF(labData, customSignature);
+    } finally {
+      setExporting(false);
+    }
+  }, [labData, customSignature]);
 
-  function handleExportPDF(test: LabTest) {
-    const doc = new jsPDF();
-    let y = drawHeader(doc, clinic, 'Reporte de Laboratorio');
+  const handlePrint = useCallback(() => {
+    printLabPDF(labData, customSignature);
+  }, [labData, customSignature]);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setFillColor(226, 240, 254);
-    doc.rect(20, y - 6, 170, 8, 'F');
-    doc.setTextColor(12, 74, 110);
-    doc.text('DATOS DEL PACIENTE', 22, y - 0.5);
-    doc.setTextColor(0, 0, 0);
-
-    y += 8;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const dataRows = [
-      ['Mascota:', test.petName, 'Propietario:', test.ownerName],
-      ['Fecha:', formatDate(test.date), 'Tipo de Examen:', test.testType],
-    ];
-    dataRows.forEach(row => {
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[0], 22, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(row[1], 60, y);
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[2], 110, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(row[3], 145, y);
-      y += 8;
-    });
-
-    y += 4;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setFillColor(226, 240, 254);
-    doc.rect(20, y - 6, 170, 8, 'F');
-    doc.setTextColor(12, 74, 110);
-    doc.text('RESULTADOS', 22, y - 0.5);
-    doc.setTextColor(0, 0, 0);
-
-    y += 8;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const splitResults = doc.splitTextToSize(test.results || 'Sin resultados registrados.', 170);
-    doc.text(splitResults, 22, y);
-    y += splitResults.length * 6 + 6;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setFillColor(226, 240, 254);
-    doc.rect(20, y - 6, 170, 8, 'F');
-    doc.setTextColor(12, 74, 110);
-    doc.text('OBSERVACIONES', 22, y - 0.5);
-    doc.setTextColor(0, 0, 0);
-
-    y += 8;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const splitObs = doc.splitTextToSize(test.observations || 'Sin observaciones.', 170);
-    doc.text(splitObs, 22, y);
-    y += splitObs.length * 6 + 6;
-
-    drawFooter(doc, clinic, y);
-    doc.save(`Lab_${test.petName}_${test.date}.pdf`);
-  }
-
-  function handleSaveClinic() {
-    saveClinicInfo(clinic);
-    setShowSettings(false);
-  }
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCustomSignature(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <FlaskConical size={20} className="text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-slate-800 font-semibold text-lg">Laboratorio</h2>
-            <p className="text-slate-400 text-xs">Reportes de laboratorio y exámenes clínicos</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSettings(s => !s)}
-            className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition-colors flex items-center gap-1.5"
-          >
-            <Settings size={15} /> Datos del Consultorio
-          </button>
-          <button
-            onClick={() => setShowForm(s => !s)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Plus size={16} /> Nuevo Examen
-          </button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <LabReportForm data={labData} onChange={setLabData} />
 
-      {/* Clinic settings panel */}
-      {showSettings && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-          <h3 className="text-slate-700 font-medium text-sm">Datos del Consultorio (para PDFs)</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Nombre del Consultorio</label>
-              <input value={clinic.name} onChange={e => setClinic(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Nombre del Veterinario</label>
-              <input value={clinic.vetName} onChange={e => setClinic(prev => ({ ...prev, vetName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Título / Especialidad</label>
-              <input value={clinic.vetTitle} onChange={e => setClinic(prev => ({ ...prev, vetTitle: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Teléfono</label>
-              <input value={clinic.phone} onChange={e => setClinic(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-slate-500 text-xs mb-1">Dirección</label>
-              <input value={clinic.address} onChange={e => setClinic(prev => ({ ...prev, address: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <button onClick={handleSaveClinic}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-            Guardar
-          </button>
-        </div>
-      )}
+          <div className="mt-6 space-y-4 border-t border-slate-200 pt-4">
+            <label className="flex cursor-pointer items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
+              <span className="flex items-center gap-2 text-sm font-semibold text-[#1a365d]">
+                <PenLine className="h-4 w-4" />
+                Firma Digital
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSignature((s) => !s)}
+                className={`relative h-6 w-11 rounded-full transition ${showSignature ? "bg-[#2b6cb0]" : "bg-gray-300"}`}
+                aria-pressed={showSignature}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${showSignature ? "left-[22px]" : "left-0.5"}`} />
+              </button>
+            </label>
 
-      {/* New test form */}
-      {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-          <h3 className="text-slate-700 font-medium text-sm">Nuevo Reporte de Laboratorio</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Nombre de la Mascota *</label>
-              <input value={form.petName} onChange={e => setForm(prev => ({ ...prev, petName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Propietario *</label>
-              <input value={form.ownerName} onChange={e => setForm(prev => ({ ...prev, ownerName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Fecha</label>
-              <input type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1">Tipo de Examen</label>
-              <select value={form.testType} onChange={e => setForm(prev => ({ ...prev, testType: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {TEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-slate-500 text-xs mb-1">Resultados</label>
-              <textarea value={form.results} onChange={e => setForm(prev => ({ ...prev, results: e.target.value }))}
-                rows={4} placeholder="Describa los resultados del examen..."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-slate-500 text-xs mb-1">Observaciones</label>
-              <textarea value={form.observations} onChange={e => setForm(prev => ({ ...prev, observations: e.target.value }))}
-                rows={3} placeholder="Observaciones clínicas, recomendaciones..."
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleAdd}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-              Guardar Examen
-            </button>
-            <button onClick={() => setShowForm(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-sm hover:bg-slate-50 transition-colors">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por mascota, dueño o examen..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-          <FlaskConical size={32} className="text-slate-200 mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">
-            {search ? 'Sin resultados.' : 'No hay exámenes de laboratorio registrados.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(test => (
-            <div key={test.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="text-slate-800 font-semibold text-sm">{test.petName}</span>
-                    <span className="text-slate-300">·</span>
-                    <span className="text-slate-500 text-sm">{test.ownerName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium">{test.testType}</span>
-                    <span className="text-slate-400 text-xs">{formatDate(test.date)}</span>
-                  </div>
-                  {test.results && (
-                    <p className="text-slate-600 text-sm mt-2 line-clamp-2">{test.results}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => handleExportPDF(test)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-colors">
-                    <FileDown size={14} /> PDF
+            <div className="rounded-lg bg-slate-50 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-semibold text-[#1a365d]">
+                  <Upload className="h-4 w-4" />
+                  Subir / Cambiar Imagen de Firma y Sello
+                </span>
+                {customSignature && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomSignature(null)}
+                    className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+                  >
+                    <X className="h-3.5 w-3.5" /> Quitar
                   </button>
-                  <button onClick={() => handleDelete(test.id)}
-                    className="p-1.5 rounded-md text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
+                )}
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-[#2b6cb0] hover:text-[#2b6cb0]">
+                  <Upload className="h-3.5 w-3.5" />
+                  Elegir archivo
+                  <input type="file" accept="image/*" onChange={handleSignatureUpload} className="hidden" />
+                </label>
+                {customSignature ? (
+                  <img src={customSignature} alt="Firma personalizada" className="h-12 w-32 rounded border border-gray-300 bg-white object-contain p-1" />
+                ) : (
+                  <span className="text-xs text-gray-500">Usando firma predeterminada del Dr. Cedeño</span>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleDownload}
+                disabled={exporting}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#1a365d] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#2b6cb0] disabled:opacity-60"
+              >
+                <Download className="h-4 w-4" />
+                {exporting ? "Generando..." : "Descargar PDF"}
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 border-[#1a365d] px-4 py-2.5 text-sm font-bold text-[#1a365d] transition hover:bg-[#1a365d] hover:text-white"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-slate-200 p-3 shadow-sm">
+          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-slate-500">Vista Previa — Hoja Carta (8.5 × 11 in)</p>
+          <div ref={previewWrapRef} className="overflow-auto rounded-lg bg-slate-300 p-3" style={{ maxHeight: "calc(100vh - 220px)" }}>
+            <div className="preview-scale mx-auto" style={{ transform: `scale(${scale})`, width: 794, height: 1123 * scale }}>
+              <div style={{ transformOrigin: "top left" }}>
+                <LabReportPreview data={labData} showSignature={showSignature} customSignature={customSignature} />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="180" viewBox="0 0 520 180">
+  <rect width="520" height="180" fill="white"/>
+  <g fill="none" stroke="#4b4d88" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 116 C52 72 102 25 142 25 C178 25 157 66 126 78 C92 91 59 91 49 116 C39 143 77 137 110 112 C145 86 170 68 200 58 C218 52 226 59 213 72 C195 91 163 112 159 137 C155 155 174 152 189 135 C203 119 216 97 231 91 C242 86 247 92 240 105 C232 119 216 134 222 141 C231 152 250 132 266 116"/>
+    <path d="M79 145 C111 134 125 125 144 109"/>
+    <path d="M78 119 C82 139 91 151 106 157 C114 160 121 155 120 146"/>
+  </g>
+  <g fill="#111" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="390" y="58" font-size="25" font-style="italic">Dr. Ricardo Cedeño</text>
+    <text x="390" y="88" font-size="19">Médico Veterinario</text>
+    <text x="390" y="112" font-size="19">Zootecnista</text>
+    <text x="390" y="143" font-size="18">Idoneidad 454</text>
+  </g>
+</svg>

@@ -180,4 +180,62 @@ export interface PharmacySale {
   createdAt: string;
 }
 
+// ===== Laboratory & Certificate types (from Labs repo) =====
+
+export type ResultValue = "POSITIVO" | "NEGATIVO" | "PERSONALIZADO";
+
+export interface ExamParameter {
+  id: string;
+  name: string;
+}
+
+export type ExamType = "standard" | "copro";
+
+export interface ExamTemplate {
+  id: string;
+  name: string;
+  type: ExamType;
+  parameters: ExamParameter[];
+}
+
+export interface ParameterResult {
+  value: ResultValue;
+  customValue: string;
+  details: string;
+}
+
+export interface LabReportData {
+  patientName: string;
+  ownerName: string;
+  date: string;
+  examId: string;
+  results: Record<string, ParameterResult>;
+  observations: string;
+  photo: string | null;
+  photoName: string | null;
+  coproFindings: string;
+  coproSample: string;
+  coproTreatment: string;
+}
+
+export interface CertificateData {
+  patientName: string;
+  species: "Canino" | "Felino" | "Conejo" | "Ave" | "Roedor" | "Reptil" | "Otro" | "";
+  breed: string;
+  age: string;
+  sex: string;
+  colorMarks: string;
+  ownerName: string;
+  idNumber: string;
+  ownerAddress: string;
+  ownerPhone: string;
+  destination: string;
+  rabiesVaccineBrand: string;
+  internalDewormer: string;
+  externalDewormer: string;
+  issueDay: string;
+  issueMonth: string;
+  issueYear: string;
+}
+
 
