@@ -343,7 +343,7 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   doc.text("Datos del Propietario", MARGIN + 2, y + 5);
   y += 7;
 
-  function drawOwnerRow(label: string, val: string, valColSpan: number) {
+  function drawOwnerRow(label: string, val: string) {
     const labelW = 45;
     const valW = CONTENT_W - labelW;
     setFillColor(doc, "#ebf2f8");
@@ -362,11 +362,11 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
     y += cellH;
   }
 
-  drawOwnerRow("Nombre Completo", data.ownerName, 3);
-  drawOwnerRow("Cédula/Pasaporte", data.idNumber, 3);
-  drawOwnerRow("Dirección", data.ownerAddress, 3);
-  drawOwnerRow("Teléfono", data.ownerPhone, 3);
-  drawOwnerRow("Destino de Exportación", data.destination, 3);
+  drawOwnerRow("Nombre Completo", data.ownerName);
+  drawOwnerRow("Cédula/Pasaporte", data.idNumber);
+  drawOwnerRow("Dirección", data.ownerAddress);
+  drawOwnerRow("Teléfono", data.ownerPhone);
+  drawOwnerRow("Destino de Exportación", data.destination);
   y += 5;
 
   setFillColor(doc, "#f7fafc");

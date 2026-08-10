@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { FileText, Download, Printer, PenLine, Upload, X } from "lucide-react";
+import { Download, Printer, PenLine, Upload, X } from "lucide-react";
 import type { LabReportData } from "@/types";
 import { EXAM_TEMPLATES } from "@/data/exams";
 import LabReportForm from "./LabReportForm";

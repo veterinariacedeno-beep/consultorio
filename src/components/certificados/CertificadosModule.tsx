@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Award, Download, Printer, PenLine, Upload, X } from "lucide-react";
+import { Download, Printer, PenLine, Upload, X } from "lucide-react";
 import type { CertificateData } from "@/types";
 import { MONTHS_ES } from "@/data/constants";
 import CertificateForm from "./CertificateForm";

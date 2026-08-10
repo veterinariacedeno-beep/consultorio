@@ -1,4 +1,3 @@
-import { DOCTOR } from "@/data/constants";
 import signatureStamp from "@/assets/signature-stamp.svg";
 import type { FC } from "react";
 
