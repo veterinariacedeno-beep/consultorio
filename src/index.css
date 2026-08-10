@@ -67,12 +67,12 @@
   border-radius: 4px;
 }
 
-/* ===== Signature block: bottom-right ===== */
+/* ===== Signature block: bottom-left ===== */
 .signature-block {
   margin-top: 25px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 /* On-screen preview scaling container */
