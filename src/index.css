@@ -79,3 +79,89 @@
 .preview-scale {
   transform-origin: top center;
 }
+
+/* ===== Print styles ===== */
+@media print {
+  /* Reset all height/overflow constraints so the browser
+     recognizes the full document size and paginates naturally */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* Unset every ancestor container that clips content on screen */
+  .flex,
+  .h-screen,
+  .overflow-hidden,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  [class*="overflow-"] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Hide layout chrome: sidebar, top bar, mobile overlays, buttons */
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Let the main content area flow without constraints */
+  main {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  /* Print-only document: full width, no clipping */
+  .print-document {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .doc-page {
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Table rows: avoid breaking a single row across two pages */
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Table headers: repeat on each printed page */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Tables expand fully without internal scroll */
+  table {
+    width: 100% !important;
+    overflow: visible !important;
+    border-collapse: collapse;
+  }
+
+  /* Avoid orphaned section headers at the bottom of a page */
+  h2,
+  h3,
+  p {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

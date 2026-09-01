@@ -73,7 +73,7 @@ export default function Layout({ active, onNavigate, children }: Props) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 flex flex-col transform transition-transform duration-300 ${
+        className={`no-print fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 flex flex-col transform transition-transform duration-300 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -114,7 +114,7 @@ export default function Layout({ active, onNavigate, children }: Props) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="bg-white border-b border-slate-200 px-4 lg:px-6 py-3 flex items-center gap-4 flex-shrink-0">
+        <header className="no-print bg-white border-b border-slate-200 px-4 lg:px-6 py-3 flex items-center gap-4 flex-shrink-0">
           <button
             className="lg:hidden p-1.5 rounded-md text-slate-600 hover:bg-slate-100"
             onClick={() => setMobileOpen(true)}
