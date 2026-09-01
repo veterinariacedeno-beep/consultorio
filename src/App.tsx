@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AppProvider } from './context/AppContext';
+import { Loader2 } from 'lucide-react';
+import { AppProvider, useApp } from './context/AppContext';
 import Layout, { type ActiveView } from './components/Layout';
 import Dashboard from './components/Dashboard';
 import ClientsModule from './components/clients/ClientsListModule';
@@ -15,7 +16,19 @@ import LaboratoryModule from './components/laboratorio/LaboratoryModule';
 import CertificadosModule from './components/certificados/CertificadosModule';
 
 function AppInner() {
+  const { loading } = useApp();
   const [view, setView] = useState<ActiveView>('dashboard');
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+          <p className="text-sm font-semibold text-slate-600">Cargando datos del consultorio...</p>
+        </div>
+      </div>
+    );
+  }
 
   function renderView() {
     switch (view) {

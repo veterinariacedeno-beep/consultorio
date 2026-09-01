@@ -21,6 +21,7 @@ export default function OwnerForm({ initial, existingOwners = [], onSave, onClos
       phone: '',
       email: '',
       address: '',
+      idNumber: '',
       createdAt: new Date().toISOString(),
     }
   );
@@ -62,6 +63,7 @@ export default function OwnerForm({ initial, existingOwners = [], onSave, onClos
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <Field label="Nombre completo *" value={form.name} onChange={v => set('name', v)} required />
+          <Field label="Cédula / Pasaporte" value={form.idNumber} onChange={v => set('idNumber', v)} />
           <div>
             <Field label="Teléfono / Documento" value={form.phone} onChange={v => set('phone', v)} type="tel" />
             <p className="text-slate-400 text-xs mt-1">Sirve como identificador único para evitar duplicados.</p>

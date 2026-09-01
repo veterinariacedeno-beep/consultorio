@@ -15,9 +15,13 @@ import {
   Check,
   Download,
   Paperclip,
+  Award,
+  FlaskConical,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { ServiceRecord } from '../../types';
+import type { ServiceRecord, CertificateRecord, LabRecord } from '../../types';
+import { CERTIFICATE_TYPES } from '../../data/constants';
+import { EXAM_TEMPLATES } from '../../data/exams';
 import ServiceForm from './ServiceForm';
 
 interface Props {
@@ -70,7 +74,7 @@ function getAge(pet: import('../../types').Pet): string {
 }
 
 export default function PetProfile({ petId, onBack }: Props) {
-  const { pets, owners, services, addService, updateService, deleteService } = useApp();
+  const { pets, owners, services, addService, updateService, deleteService, certificateRecords, labRecords, deleteCertificateRecord, deleteLabRecord } = useApp();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceRecord | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
@@ -85,6 +89,14 @@ export default function PetProfile({ petId, onBack }: Props) {
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       ),
     [services, petId]
+  );
+  const petCerts = useMemo(
+    () => certificateRecords.filter(c => c.petId === petId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [certificateRecords, petId]
+  );
+  const petLabs = useMemo(
+    () => labRecords.filter(l => l.petId === petId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [labRecords, petId]
   );
 
   if (!pet) return <p className="text-slate-400">Mascota no encontrada.</p>;
@@ -167,6 +179,38 @@ export default function PetProfile({ petId, onBack }: Props) {
         </div>
       </div>
 
+      {/* Certificates history */}
+      {petCerts.length > 0 && (
+        <div>
+          <h3 className="text-slate-700 font-semibold mb-3 flex items-center gap-2">
+            <Award size={16} className="text-blue-600" />
+            Certificados
+            <span className="text-slate-400 font-normal text-sm">({petCerts.length})</span>
+          </h3>
+          <div className="space-y-3">
+            {petCerts.map(cert => (
+              <CertCard key={cert.id} cert={cert} onDelete={() => { if (confirm('¿Eliminar este certificado?')) deleteCertificateRecord(cert.id); }} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lab reports history */}
+      {petLabs.length > 0 && (
+        <div>
+          <h3 className="text-slate-700 font-semibold mb-3 flex items-center gap-2">
+            <FlaskConical size={16} className="text-fuchsia-600" />
+            Laboratorios
+            <span className="text-slate-400 font-normal text-sm">({petLabs.length})</span>
+          </h3>
+          <div className="space-y-3">
+            {petLabs.map(lab => (
+              <LabCard key={lab.id} lab={lab} onDelete={() => { if (confirm('¿Eliminar este laboratorio?')) deleteLabRecord(lab.id); }} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Service history */}
       <div>
         <h3 className="text-slate-700 font-semibold mb-3 flex items-center gap-2">
@@ -174,7 +218,11 @@ export default function PetProfile({ petId, onBack }: Props) {
           <span className="text-slate-400 font-normal text-sm">({petServices.length} registros)</span>
         </h3>
 
-        {petServices.length === 0 ? (
+        {petServices.length === 0 && petCerts.length === 0 && petLabs.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <p className="text-slate-400 text-sm">No hay registros para esta mascota.</p>
+          </div>
+        ) : petServices.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
             <p className="text-slate-400 text-sm">No hay servicios registrados para esta mascota.</p>
           </div>
@@ -384,6 +432,94 @@ function Detail({ label, value }: { label: string; value: string }) {
     <div>
       <span className="text-slate-400 text-xs font-medium uppercase tracking-wide">{label}: </span>
       <span className="text-slate-700">{value}</span>
+    </div>
+  );
+}
+
+function CertCard({ cert, onDelete }: { cert: CertificateRecord; onDelete: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const certType = CERTIFICATE_TYPES.find(t => t.value === cert.data.certType);
+  const dateStr = new Date(cert.createdAt).toLocaleDateString('es-PA', { day: '2-digit', month: 'short', year: 'numeric' });
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-sm transition-shadow">
+      <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+          <Award size={16} className="text-blue-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+              {certType?.label ?? 'Certificado'}
+            </span>
+            <span className="text-slate-500 text-xs">{dateStr}</span>
+            {cert.data.vetName && <span className="text-slate-400 text-xs hidden sm:inline">· {cert.data.vetName}</span>}
+          </div>
+          {cert.data.motivo && <p className="text-slate-600 text-sm mt-1 truncate">{cert.data.motivo}</p>}
+        </div>
+        <div className="print:hidden flex gap-1">
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50">
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 border-t border-slate-100 space-y-2 text-sm">
+          {cert.data.motivo && <Detail label="Motivo" value={cert.data.motivo} />}
+          {cert.data.observaciones && <Detail label="Observaciones" value={cert.data.observaciones} />}
+          {cert.data.recomendacion && <Detail label="Recomendación" value={cert.data.recomendacion} />}
+          {cert.data.vetName && <Detail label="Médico" value={cert.data.vetName} />}
+          <Detail label="Fecha de emisión" value={`${cert.data.issueDay || '—'} de ${cert.data.issueMonth || '—'} de ${cert.data.issueYear || '—'}`} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LabCard({ lab, onDelete }: { lab: LabRecord; onDelete: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const exam = EXAM_TEMPLATES.find(e => e.id === lab.data.examId);
+  const dateStr = new Date(lab.createdAt).toLocaleDateString('es-PA', { day: '2-digit', month: 'short', year: 'numeric' });
+  const positiveParams = exam?.type === 'standard'
+    ? exam.parameters.filter(p => lab.data.results[p.id]?.value === 'POSITIVO')
+    : [];
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-sm transition-shadow">
+      <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+        <div className="w-9 h-9 rounded-lg bg-fuchsia-50 flex items-center justify-center flex-shrink-0">
+          <FlaskConical size={16} className="text-fuchsia-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-700">
+              {exam?.name ?? 'Laboratorio'}
+            </span>
+            <span className="text-slate-500 text-xs">{dateStr}</span>
+            {positiveParams.length > 0 && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                {positiveParams.length} Positivo{positiveParams.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {lab.data.observations && <p className="text-slate-600 text-sm mt-1 truncate">{lab.data.observations}</p>}
+        </div>
+        <div className="print:hidden flex gap-1">
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50">
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 border-t border-slate-100 space-y-2 text-sm">
+          {exam?.type === 'standard' && exam.parameters.map(p => {
+            const r = lab.data.results[p.id];
+            if (!r) return null;
+            const label = r.value === 'PERSONALIZADO' ? (r.customValue || '—') : r.value;
+            return <Detail key={p.id} label={p.name} value={label} />;
+          })}
+          {exam?.type === 'copro' && lab.data.coproFindings && <Detail label="Hallazgos" value={lab.data.coproFindings} />}
+          {lab.data.observations && <Detail label="Observaciones" value={lab.data.observations} />}
+        </div>
+      )}
     </div>
   );
 }

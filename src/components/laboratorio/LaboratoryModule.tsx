@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Download, Printer, Upload, X } from "lucide-react";
+import { Download, Printer, Upload, X, Save } from "lucide-react";
 import type { LabReportData } from "@/types";
 import { EXAM_TEMPLATES, buildDefaultResults } from "@/data/exams";
 import LabReportForm from "./LabReportForm";
 import LabReportPreview from "./LabReportPreview";
 import { downloadLabPDF, printLabPDF } from "@/utils/pdf";
+import { useApp } from "@/context/AppContext";
 
 const today = new Date();
 const todayStr = today.toISOString().slice(0, 10);
@@ -27,8 +28,11 @@ export default function LaboratoryModule() {
   const [labData, setLabData] = useState<LabReportData>(initialLab);
   const [customSignature, setCustomSignature] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
   const previewWrapRef = useRef<HTMLDivElement>(null);
+  const { addLabRecord, pets, owners } = useApp();
 
   useEffect(() => {
     const compute = () => {
@@ -55,6 +59,29 @@ export default function LaboratoryModule() {
   const handlePrint = useCallback(() => {
     printLabPDF(labData, customSignature);
   }, [labData, customSignature]);
+
+  const handleSave = useCallback(() => {
+    setSaving(true);
+    try {
+      const pet = pets.find(
+        (p) => p.name.toLowerCase() === labData.patientName.toLowerCase()
+      );
+      const owner = owners.find(
+        (o) => o.name.toLowerCase() === labData.ownerName.toLowerCase()
+      );
+      addLabRecord({
+        id: `lab-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        petId: pet?.id ?? null,
+        ownerId: owner?.id ?? null,
+        data: labData,
+        createdAt: new Date().toISOString(),
+      });
+      setSaveMsg("Laboratorio guardado en el historial del paciente.");
+      setTimeout(() => setSaveMsg(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  }, [labData, addLabRecord, pets, owners]);
 
   const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,7 +128,21 @@ export default function LaboratoryModule() {
               </div>
             </div>
 
+            {saveMsg && (
+              <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-2 text-sm font-semibold text-green-700">
+                {saveMsg}
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-teal-700 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? "Guardando..." : "Guardar en ficha"}
+              </button>
               <button
                 onClick={handleDownload}
                 disabled={exporting}

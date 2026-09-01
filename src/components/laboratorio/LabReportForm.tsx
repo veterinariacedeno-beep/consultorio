@@ -1,7 +1,9 @@
 import type { FC, ChangeEvent } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { FileText, Upload, X, Eraser } from "lucide-react";
 import type { LabReportData, ParameterResult, ResultValue } from "@/types";
 import { EXAM_TEMPLATES, RESULT_TEXTS, buildDefaultResults } from "@/data/exams";
+import ClientPetSearch from "@/components/shared/ClientPetSearch";
+import type { SelectedMatch } from "@/components/shared/ClientPetSearch";
 
 interface Props {
   data: LabReportData;
@@ -12,6 +14,21 @@ const LabReportForm: FC<Props> = ({ data, onChange }) => {
   const exam = EXAM_TEMPLATES.find((e) => e.id === data.examId) ?? EXAM_TEMPLATES[0];
 
   const update = (patch: Partial<LabReportData>) => onChange({ ...data, ...patch });
+
+  const handleSelect = (match: SelectedMatch) => {
+    const patch: Partial<LabReportData> = {};
+    if (match.owner) {
+      patch.ownerName = match.owner.name;
+    }
+    if (match.pet) {
+      patch.patientName = match.pet.name;
+    }
+    update(patch);
+  };
+
+  const clearFields = () => {
+    onChange({ ...data, patientName: "", ownerName: "" });
+  };
 
   const handleExamChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const examId = e.target.value;
@@ -52,6 +69,22 @@ const LabReportForm: FC<Props> = ({ data, onChange }) => {
       <div className="flex items-center gap-2 text-[#1a365d]">
         <FileText className="h-5 w-5" />
         <h2 className="text-lg font-bold">Reporte de Laboratorio</h2>
+      </div>
+
+      {/* Search bar */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-600">
+          Buscar Cliente / Paciente
+        </label>
+        <ClientPetSearch onSelect={handleSelect} onClear={clearFields} />
+        <button
+          type="button"
+          onClick={clearFields}
+          className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors"
+        >
+          <Eraser className="h-3.5 w-3.5" />
+          Limpiar campos / Ingreso manual
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

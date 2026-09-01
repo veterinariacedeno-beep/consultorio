@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Search, X, Keyboard } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import type { Owner, Pet } from "@/types";
 

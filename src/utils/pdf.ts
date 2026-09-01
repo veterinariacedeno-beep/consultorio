@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { LabReportData, CertificateData } from "@/types";
 import { EXAM_TEMPLATES, RESULT_TEXTS } from "@/data/exams";
-import { CLINIC, DOCTOR, DECLARATION_TEXT, DECLARATION_REQUISITES } from "@/data/constants";
+import { CLINIC, DOCTOR, DECLARATION_TEXT, DECLARATION_REQUISITES, CERTIFICATE_TYPES } from "@/data/constants";
 
 const AZUL_MARINO = "#1a365d";
 const GRIS_TEXTO = "#334155";
@@ -267,14 +267,18 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
 
   let y = drawHeader(doc);
 
+  const certConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
+  const title = certConfig?.title ?? "Certificado";
+  const isViaje = data.certType === "viaje";
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   setTextColor(doc, AZUL_MARINO);
-  doc.text("CERTIFICADO DE EXPORTACIÓN", CENTER, y, { align: "center" });
+  doc.text(title.toUpperCase(), CENTER, y, { align: "center" });
   y += 5;
   doc.setFontSize(10);
   setTextColor(doc, AZUL_TAB);
-  doc.text("Declaración Médica Veterinaria", CENTER, y, { align: "center" });
+  doc.text(isViaje ? "Declaración Médica Veterinaria" : "Consultorio Veterinario Dr. Cedeño", CENTER, y, { align: "center" });
   y += 8;
 
   setDrawColor(doc, GRIS_BORDE);
@@ -347,38 +351,72 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   drawOwnerRow("Cédula/Pasaporte", data.idNumber);
   drawOwnerRow("Dirección", data.ownerAddress);
   drawOwnerRow("Teléfono", data.ownerPhone);
-  drawOwnerRow("Destino de Exportación", data.destination);
+  if (isViaje) {
+    drawOwnerRow("Destino de Exportación", data.destination);
+  }
   y += 5;
 
-  setFillColor(doc, "#f7fafc");
-  setDrawColor(doc, AZUL_MARINO);
-  doc.setLineWidth(0.5);
-  const declBoxH = 60;
-  doc.rect(MARGIN, y, CONTENT_W, declBoxH, "FD");
+  // Dynamic certificate body fields
+  const hasBody = data.motivo || data.observaciones || data.recomendacion;
+  if (hasBody) {
+    setFillColor(doc, "#f7fafc");
+    setDrawColor(doc, AZUL_MARINO);
+    doc.setLineWidth(0.5);
+    const bodyLines: { label: string; text: string }[] = [];
+    if (data.motivo) bodyLines.push({ label: "Motivo", text: data.motivo });
+    if (data.observaciones) bodyLines.push({ label: "Observaciones", text: data.observaciones });
+    if (data.recomendacion) bodyLines.push({ label: "Recomendación Médica", text: data.recomendacion });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  setTextColor(doc, AZUL_MARINO);
-  doc.text("DECLARACIÓN MÉDICA VETERINARIA", MARGIN + 4, y + 6);
+    let bodyH = 6;
+    const renderedLines: string[][] = [];
+    for (const bl of bodyLines) {
+      const lines = doc.splitTextToSize(`${bl.label}: ${bl.text}`, CONTENT_W - 10);
+      renderedLines.push(lines);
+      bodyH += lines.length * 4 + 2;
+    }
+    doc.rect(MARGIN, y, CONTENT_W, bodyH, "FD");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    setTextColor(doc, "#000000");
+    let bodyY = y + 5;
+    for (const lines of renderedLines) {
+      doc.text(lines, MARGIN + 4, bodyY);
+      bodyY += lines.length * 4 + 2;
+    }
+    y += bodyH + 5;
+  }
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  setTextColor(doc, "#000000");
-  let textY = y + 12;
-  DECLARATION_TEXT.forEach((p) => {
-    const lines = doc.splitTextToSize(p, CONTENT_W - 10);
-    doc.text(lines, MARGIN + 4, textY);
-    textY += lines.length * 4;
-  });
-  doc.setFont("helvetica", "normal");
-  const reqLines = DECLARATION_REQUISITES.map((r) => `• ${r}`);
-  reqLines.forEach((r) => {
-    const lines = doc.splitTextToSize(r, CONTENT_W - 14);
-    doc.text(lines, MARGIN + 7, textY);
-    textY += lines.length * 4;
-  });
+  // Declaration block — only for viaje (export) certificates
+  if (isViaje) {
+    setFillColor(doc, "#f7fafc");
+    setDrawColor(doc, AZUL_MARINO);
+    doc.setLineWidth(0.5);
+    const declBoxH = 60;
+    doc.rect(MARGIN, y, CONTENT_W, declBoxH, "FD");
 
-  y += declBoxH + 6;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    setTextColor(doc, AZUL_MARINO);
+    doc.text("DECLARACIÓN MÉDICA VETERINARIA", MARGIN + 4, y + 6);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    setTextColor(doc, "#000000");
+    let textY = y + 12;
+    DECLARATION_TEXT.forEach((p) => {
+      const lines = doc.splitTextToSize(p, CONTENT_W - 10);
+      doc.text(lines, MARGIN + 4, textY);
+      textY += lines.length * 4;
+    });
+    const reqLines = DECLARATION_REQUISITES.map((r) => `• ${r}`);
+    reqLines.forEach((r) => {
+      const lines = doc.splitTextToSize(r, CONTENT_W - 14);
+      doc.text(lines, MARGIN + 7, textY);
+      textY += lines.length * 4;
+    });
+
+    y += declBoxH + 6;
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
@@ -386,7 +424,16 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   const issueText = `EXPEDICIÓN: La presente certificación se expide a solicitud de la parte interesada. Dado en la Ciudad de Panamá, a los ${data.issueDay || "___"} días del mes de ${data.issueMonth || "___"} del año ${data.issueYear || "___"}.`;
   const issueLines = doc.splitTextToSize(issueText, CONTENT_W);
   doc.text(issueLines, MARGIN, y);
-  y += issueLines.length * 4 + 8;
+  y += issueLines.length * 4 + 4;
+
+  if (data.vetName) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    setTextColor(doc, AZUL_MARINO);
+    doc.text(`Médico Tratante: ${data.vetName}`, MARGIN, y);
+    y += 5;
+  }
+  y += 4;
 
   drawSignature(doc, y, customSignature);
   return doc;
@@ -399,7 +446,9 @@ export function downloadLabPDF(data: LabReportData, customSignature?: string | n
 
 export function downloadCertPDF(data: CertificateData, customSignature?: string | null) {
   const doc = generateCertPDF(data, customSignature);
-  doc.save(`Certificado_Exportacion_${data.patientName || "paciente"}.pdf`);
+  const certConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
+  const prefix = certConfig?.value === "viaje" ? "Certificado_Exportacion" : `Certificado_${certConfig?.label ?? ""}`.replace(/\s+/g, "_");
+  doc.save(`${prefix}_${data.patientName || "paciente"}.pdf`);
 }
 
 export function printLabPDF(data: LabReportData, customSignature?: string | null) {

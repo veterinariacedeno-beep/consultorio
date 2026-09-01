@@ -1,11 +1,27 @@
 import type { FC } from "react";
-import { Award, Calendar } from "lucide-react";
-import type { CertificateData } from "@/types";
-import { MONTHS_ES } from "@/data/constants";
+import { Award, Calendar, Eraser } from "lucide-react";
+import type { CertificateData, CertificateType } from "@/types";
+import { MONTHS_ES, CERTIFICATE_TYPES } from "@/data/constants";
+import ClientPetSearch from "@/components/shared/ClientPetSearch";
+import type { SelectedMatch } from "@/components/shared/ClientPetSearch";
 
 interface Props {
   data: CertificateData;
   onChange: (data: CertificateData) => void;
+}
+
+function getAgeFromPet(pet: { birthDate?: string; ageManual?: string }): string {
+  if (pet.ageManual) return pet.ageManual;
+  if (pet.birthDate) {
+    const diff = Date.now() - new Date(pet.birthDate).getTime();
+    const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    if (years === 0) {
+      const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30.44));
+      return `${months} mes${months !== 1 ? "es" : ""}`;
+    }
+    return `${years} año${years !== 1 ? "s" : ""}`;
+  }
+  return "";
 }
 
 const CertificateForm: FC<Props> = ({ data, onChange }) => {
@@ -20,13 +36,81 @@ const CertificateForm: FC<Props> = ({ data, onChange }) => {
     });
   };
 
+  const handleSelect = (match: SelectedMatch) => {
+    const patch: Partial<CertificateData> = {};
+    if (match.owner) {
+      patch.ownerName = match.owner.name;
+      patch.ownerPhone = match.owner.phone;
+      patch.ownerAddress = match.owner.address;
+      patch.idNumber = match.owner.idNumber || "";
+    }
+    if (match.pet) {
+      patch.patientName = match.pet.name;
+      patch.species = match.pet.species as CertificateData["species"];
+      patch.breed = match.pet.breed;
+      patch.sex = match.pet.gender;
+      patch.colorMarks = match.pet.color || "";
+      patch.age = getAgeFromPet(match.pet);
+    }
+    update(patch);
+  };
+
+  const clearFields = () => {
+    onChange({
+      ...data,
+      patientName: "",
+      species: "",
+      breed: "",
+      age: "",
+      sex: "",
+      colorMarks: "",
+      ownerName: "",
+      idNumber: "",
+      ownerAddress: "",
+      ownerPhone: "",
+    });
+  };
+
+  const certTypeConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2 text-[#1a365d]">
         <Award className="h-5 w-5" />
-        <h2 className="text-lg font-bold">Certificado de Exportación</h2>
+        <h2 className="text-lg font-bold">{certTypeConfig?.label ?? "Certificado"}</h2>
       </div>
 
+      {/* Certificate Type Selector */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-600">Tipo de Certificado</label>
+        <select
+          value={data.certType}
+          onChange={(e) => update({ certType: e.target.value as CertificateType })}
+          className="input-base"
+        >
+          {CERTIFICATE_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Search bar */}
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-600">
+          Buscar Cliente / Paciente
+        </label>
+        <ClientPetSearch onSelect={handleSelect} onClear={clearFields} />
+        <button
+          type="button"
+          onClick={clearFields}
+          className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors"
+        >
+          <Eraser className="h-3.5 w-3.5" />
+          Limpiar campos / Ingreso manual
+        </button>
+      </div>
+
+      {/* Patient data */}
       <div>
         <h3 className="mb-2 text-sm font-bold text-[#1a365d]">Datos del Paciente</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -64,6 +148,7 @@ const CertificateForm: FC<Props> = ({ data, onChange }) => {
         </div>
       </div>
 
+      {/* Owner data */}
       <div>
         <h3 className="mb-2 text-sm font-bold text-[#1a365d]">Datos del Propietario</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -79,12 +164,34 @@ const CertificateForm: FC<Props> = ({ data, onChange }) => {
           <Field label="Teléfono de Contacto">
             <input type="text" value={data.ownerPhone} onChange={(e) => update({ ownerPhone: e.target.value })} className="input-base" />
           </Field>
-          <Field label="Destino de Exportación">
-            <input type="text" value={data.destination} onChange={(e) => update({ destination: e.target.value })} placeholder="País o ciudad de destino" className="input-base" />
+          {data.certType === "viaje" && (
+            <Field label="Destino de Exportación">
+              <input type="text" value={data.destination} onChange={(e) => update({ destination: e.target.value })} placeholder="País o ciudad de destino" className="input-base" />
+            </Field>
+          )}
+        </div>
+      </div>
+
+      {/* Dynamic certificate body fields */}
+      <div>
+        <h3 className="mb-2 text-sm font-bold text-[#1a365d]">Cuerpo del Certificado</h3>
+        <div className="space-y-4">
+          <Field label="Motivo">
+            <input type="text" value={data.motivo} onChange={(e) => update({ motivo: e.target.value })} placeholder="Motivo de la consulta o emisión" className="input-base" />
+          </Field>
+          <Field label="Observaciones">
+            <textarea value={data.observaciones} onChange={(e) => update({ observaciones: e.target.value })} rows={3} placeholder="Observaciones clínicas, hallazgos del examen físico..." className="input-base resize-y" />
+          </Field>
+          <Field label="Recomendación Médica">
+            <textarea value={data.recomendacion} onChange={(e) => update({ recomendacion: e.target.value })} rows={2} placeholder="Recomendaciones, tratamiento, próximos pasos..." className="input-base resize-y" />
+          </Field>
+          <Field label="Médico Tratante">
+            <input type="text" value={data.vetName} onChange={(e) => update({ vetName: e.target.value })} placeholder="Nombre del médico veterinario" className="input-base" />
           </Field>
         </div>
       </div>
 
+      {/* Issue date */}
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-bold text-[#1a365d]">Fecha de Expedición</h3>

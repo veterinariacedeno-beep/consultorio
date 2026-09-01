@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
 import { HELPER_BASE_WEEKLY, HELPER_COMMISSION_RATE, HELPER_BATH_CORTE_FIXED, HELPER_EXPORTACION_COMMISSION } from '../types';
+import { migrateFromLocalStorage, loadData, saveData } from '../utils/storage';
 
 interface AppContextValue {
+  loading: boolean;
   owners: Owner[];
   pets: Pet[];
   services: ServiceRecord[];
@@ -82,23 +84,6 @@ function getWeekBounds(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function save<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    alert('El almacenamiento local está lleno');
-  }
-}
-
 /** Migrate legacy `serviceType` (singular) to `serviceTypes[]` on debts */
 function migrateDebts(raw: Debt[]): Debt[] {
   return raw.map(d => {
@@ -127,41 +112,70 @@ export function localDateString(date: Date = new Date()): string {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [owners, setOwners] = useState<Owner[]>(() => load('vc_owners', []));
-  const [pets, setPets] = useState<Pet[]>(() => load('vc_pets', []));
-  const [services, setServices] = useState<ServiceRecord[]>(() =>
-    migrateServices(load('vc_services', []))
-  );
-  const [invoices, setInvoices] = useState<Invoice[]>(() => load('vc_invoices', []));
-  const [weeklySnapshots, _setWeeklySnapshots] = useState<WeeklySnapshot[]>(() =>
-    load('vc_weekly_snapshots', [])
-  );
-  const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    load('vc_appointments', [])
-  );
-  const [pharmacyItems, setPharmacyItems] = useState<PharmacyItem[]>(() =>
-    load('vc_pharmacy_items', [])
-  );
-  const [pharmacySales, setPharmacySales] = useState<PharmacySale[]>(() =>
-    load('vc_pharmacy_sales', [])
-  );
-  const [expenses, setExpenses] = useState<Expense[]>(() => load('vc_expenses', []));
-  const [debts, setDebts] = useState<Debt[]>(() => migrateDebts(load('vc_debts', [])));
-  const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>(() => load('vc_cert_records', []));
-  const [labRecords, setLabRecords] = useState<LabRecord[]>(() => load('vc_lab_records', []));
+  const [loading, setLoading] = useState(true);
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [weeklySnapshots, _setWeeklySnapshots] = useState<WeeklySnapshot[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [pharmacyItems, setPharmacyItems] = useState<PharmacyItem[]>([]);
+  const [pharmacySales, setPharmacySales] = useState<PharmacySale[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
+  const [labRecords, setLabRecords] = useState<LabRecord[]>([]);
 
-  useEffect(() => { save('vc_owners', owners); }, [owners]);
-  useEffect(() => { save('vc_pets', pets); }, [pets]);
-  useEffect(() => { save('vc_services', services); }, [services]);
-  useEffect(() => { save('vc_invoices', invoices); }, [invoices]);
-  useEffect(() => { save('vc_weekly_snapshots', weeklySnapshots); }, [weeklySnapshots]);
-  useEffect(() => { save('vc_appointments', appointments); }, [appointments]);
-  useEffect(() => { save('vc_pharmacy_items', pharmacyItems); }, [pharmacyItems]);
-  useEffect(() => { save('vc_pharmacy_sales', pharmacySales); }, [pharmacySales]);
-  useEffect(() => { save('vc_expenses', expenses); }, [expenses]);
-  useEffect(() => { save('vc_debts', debts); }, [debts]);
-  useEffect(() => { save('vc_cert_records', certificateRecords); }, [certificateRecords]);
-  useEffect(() => { save('vc_lab_records', labRecords); }, [labRecords]);
+  // Initial async load from IndexedDB (with localStorage migration)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await migrateFromLocalStorage();
+      const [o, p, s, inv, ws, ap, pi, ps, ex, db, cr, lr] = await Promise.all([
+        loadData<Owner[]>('vc_owners', []),
+        loadData<Pet[]>('vc_pets', []),
+        loadData<ServiceRecord[]>('vc_services', []),
+        loadData<Invoice[]>('vc_invoices', []),
+        loadData<WeeklySnapshot[]>('vc_weekly_snapshots', []),
+        loadData<Appointment[]>('vc_appointments', []),
+        loadData<PharmacyItem[]>('vc_pharmacy_items', []),
+        loadData<PharmacySale[]>('vc_pharmacy_sales', []),
+        loadData<Expense[]>('vc_expenses', []),
+        loadData<Debt[]>('vc_debts', []),
+        loadData<CertificateRecord[]>('vc_cert_records', []),
+        loadData<LabRecord[]>('vc_lab_records', []),
+      ]);
+      if (cancelled) return;
+      setOwners(o);
+      setPets(p);
+      setServices(migrateServices(s));
+      setInvoices(inv);
+      _setWeeklySnapshots(ws);
+      setAppointments(ap);
+      setPharmacyItems(pi);
+      setPharmacySales(ps);
+      setExpenses(ex);
+      setDebts(migrateDebts(db));
+      setCertificateRecords(cr);
+      setLabRecords(lr);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Persist to IndexedDB whenever data changes (after initial load)
+  useEffect(() => { if (!loading) saveData('vc_owners', owners); }, [owners, loading]);
+  useEffect(() => { if (!loading) saveData('vc_pets', pets); }, [pets, loading]);
+  useEffect(() => { if (!loading) saveData('vc_services', services); }, [services, loading]);
+  useEffect(() => { if (!loading) saveData('vc_invoices', invoices); }, [invoices, loading]);
+  useEffect(() => { if (!loading) saveData('vc_weekly_snapshots', weeklySnapshots); }, [weeklySnapshots, loading]);
+  useEffect(() => { if (!loading) saveData('vc_appointments', appointments); }, [appointments, loading]);
+  useEffect(() => { if (!loading) saveData('vc_pharmacy_items', pharmacyItems); }, [pharmacyItems, loading]);
+  useEffect(() => { if (!loading) saveData('vc_pharmacy_sales', pharmacySales); }, [pharmacySales, loading]);
+  useEffect(() => { if (!loading) saveData('vc_expenses', expenses); }, [expenses, loading]);
+  useEffect(() => { if (!loading) saveData('vc_debts', debts); }, [debts, loading]);
+  useEffect(() => { if (!loading) saveData('vc_cert_records', certificateRecords); }, [certificateRecords, loading]);
+  useEffect(() => { if (!loading) saveData('vc_lab_records', labRecords); }, [labRecords, loading]);
 
   const addOwner = useCallback((o: Owner) => setOwners(prev => [...prev, o]), []);
   const updateOwner = useCallback((o: Owner) => setOwners(prev => prev.map(x => x.id === o.id ? o : x)), []);
@@ -402,8 +416,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [getWeekServicesForDate, debts]);
 
   const value: AppContextValue = {
+    loading,
     owners, pets, services, invoices, weeklySnapshots, appointments,
     pharmacyItems, pharmacySales, expenses, debts,
+    certificateRecords, labRecords,
     addOwner, updateOwner, deleteOwner,
     addPet, updatePet, deletePet,
     addService, updateService, deleteService,

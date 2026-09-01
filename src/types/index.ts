@@ -40,6 +40,7 @@ export interface Owner {
   phone: string;
   email: string;
   address: string;
+  idNumber: string;
   createdAt: string;
 }
 
