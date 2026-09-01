@@ -218,7 +218,10 @@ export interface LabReportData {
   coproTreatment: string;
 }
 
+export type CertificateType = "salud" | "vacunacion" | "viaje" | "diagnostico";
+
 export interface CertificateData {
+  certType: CertificateType;
   patientName: string;
   species: "Canino" | "Felino" | "Conejo" | "Ave" | "Roedor" | "Reptil" | "Otro" | "";
   breed: string;
@@ -236,6 +239,26 @@ export interface CertificateData {
   issueDay: string;
   issueMonth: string;
   issueYear: string;
+  motivo: string;
+  observaciones: string;
+  recomendacion: string;
+  vetName: string;
+}
+
+export interface CertificateRecord {
+  id: string;
+  petId: string | null;
+  ownerId: string | null;
+  data: CertificateData;
+  createdAt: string;
+}
+
+export interface LabRecord {
+  id: string;
+  petId: string | null;
+  ownerId: string | null;
+  data: LabReportData;
+  createdAt: string;
 }
 
 

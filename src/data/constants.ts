@@ -1,3 +1,5 @@
+import type { CertificateType } from "@/types";
+
 export const CLINIC = {
   title: "CONSULTORIO VETERINARIO DR. CEDEÑO",
   ruc: "6-67-83 D.V. 63",
@@ -27,4 +29,11 @@ export const DECLARATION_REQUISITES = [
 export const MONTHS_ES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+export const CERTIFICATE_TYPES: { value: CertificateType; label: string; title: string }[] = [
+  { value: "salud", label: "Certificado de Salud", title: "Certificado de Salud Veterinario" },
+  { value: "vacunacion", label: "Certificado de Vacunación", title: "Certificado de Vacunación" },
+  { value: "viaje", label: "Certificado de Viaje / Exportación", title: "Certificado de Exportación" },
+  { value: "diagnostico", label: "Constancia Médica / Diagnóstico", title: "Constancia Médica Veterinaria" },
 ];

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, Expense, Debt, DebtPayment, ServiceType } from '../types';
+import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
 import { HELPER_BASE_WEEKLY, HELPER_COMMISSION_RATE, HELPER_BATH_CORTE_FIXED, HELPER_EXPORTACION_COMMISSION } from '../types';
 
 interface AppContextValue {
@@ -13,6 +13,8 @@ interface AppContextValue {
   pharmacySales: PharmacySale[];
   expenses: Expense[];
   debts: Debt[];
+  certificateRecords: CertificateRecord[];
+  labRecords: LabRecord[];
   addOwner: (owner: Owner) => void;
   updateOwner: (owner: Owner) => void;
   deleteOwner: (id: string) => void;
@@ -51,6 +53,10 @@ interface AppContextValue {
   addDebtPayment: (debtId: string, payment: DebtPayment) => void;
   addDebtPayments: (debtId: string, payments: DebtPayment[]) => void;
   deleteDebtPayment: (debtId: string, paymentId: string) => void;
+  addCertificateRecord: (rec: CertificateRecord) => void;
+  deleteCertificateRecord: (id: string) => void;
+  addLabRecord: (rec: LabRecord) => void;
+  deleteLabRecord: (id: string) => void;
 
   getCurrentWeekServices: () => ServiceRecord[];
   getWeekServicesForDate: (date: Date) => ServiceRecord[];
@@ -141,6 +147,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
   const [expenses, setExpenses] = useState<Expense[]>(() => load('vc_expenses', []));
   const [debts, setDebts] = useState<Debt[]>(() => migrateDebts(load('vc_debts', [])));
+  const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>(() => load('vc_cert_records', []));
+  const [labRecords, setLabRecords] = useState<LabRecord[]>(() => load('vc_lab_records', []));
 
   useEffect(() => { save('vc_owners', owners); }, [owners]);
   useEffect(() => { save('vc_pets', pets); }, [pets]);
@@ -152,6 +160,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { save('vc_pharmacy_sales', pharmacySales); }, [pharmacySales]);
   useEffect(() => { save('vc_expenses', expenses); }, [expenses]);
   useEffect(() => { save('vc_debts', debts); }, [debts]);
+  useEffect(() => { save('vc_cert_records', certificateRecords); }, [certificateRecords]);
+  useEffect(() => { save('vc_lab_records', labRecords); }, [labRecords]);
 
   const addOwner = useCallback((o: Owner) => setOwners(prev => [...prev, o]), []);
   const updateOwner = useCallback((o: Owner) => setOwners(prev => prev.map(x => x.id === o.id ? o : x)), []);
@@ -273,6 +283,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })), [getAbanoCommissionAtPayment]);
   const deleteDebtPayment = useCallback((debtId: string, paymentId: string) =>
     setDebts(prev => prev.map(d => d.id === debtId ? { ...d, payments: d.payments.filter(p => p.id !== paymentId) } : d)), []);
+
+  const addCertificateRecord = useCallback((rec: CertificateRecord) => setCertificateRecords(prev => [...prev, rec]), []);
+  const deleteCertificateRecord = useCallback((id: string) => setCertificateRecords(prev => prev.filter(x => x.id !== id)), []);
+  const addLabRecord = useCallback((rec: LabRecord) => setLabRecords(prev => [...prev, rec]), []);
+  const deleteLabRecord = useCallback((id: string) => setLabRecords(prev => prev.filter(x => x.id !== id)), []);
 
   const getWeekServicesForDate = useCallback((date: Date): ServiceRecord[] => {
     const { start, end } = getWeekBounds(date);
@@ -399,6 +414,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addPharmacySale, deletePharmacySale,
     addExpense, updateExpense, deleteExpense,
     addDebt, updateDebt, deleteDebt, addDebtPayment, addDebtPayments, deleteDebtPayment,
+    addCertificateRecord, deleteCertificateRecord, addLabRecord, deleteLabRecord,
     getCurrentWeekServices, getWeekServicesForDate, getWeekAbonosForDate, getWeeklyTotals, getExpensesForWeek, getServiceCommission, getAbanoCommissionAtPayment, getHelperWeeklyPay,
   };
 
