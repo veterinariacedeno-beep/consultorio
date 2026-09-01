@@ -268,8 +268,7 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   let y = drawHeader(doc);
 
   const certConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
-  const title = certConfig?.title ?? "Certificado";
-  const isViaje = data.certType === "viaje";
+  const title = certConfig?.title ?? "Certificado de Exportación";
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
@@ -278,7 +277,7 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   y += 5;
   doc.setFontSize(10);
   setTextColor(doc, AZUL_TAB);
-  doc.text(isViaje ? "Declaración Médica Veterinaria" : "Consultorio Veterinario Dr. Cedeño", CENTER, y, { align: "center" });
+  doc.text("Declaración Médica Veterinaria", CENTER, y, { align: "center" });
   y += 8;
 
   setDrawColor(doc, GRIS_BORDE);
@@ -351,9 +350,7 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
   drawOwnerRow("Cédula/Pasaporte", data.idNumber);
   drawOwnerRow("Dirección", data.ownerAddress);
   drawOwnerRow("Teléfono", data.ownerPhone);
-  if (isViaje) {
-    drawOwnerRow("Destino de Exportación", data.destination);
-  }
+  drawOwnerRow("Destino de Exportación", data.destination);
   y += 5;
 
   // Dynamic certificate body fields
@@ -386,37 +383,35 @@ function generateCertPDF(data: CertificateData, customSignature?: string | null)
     y += bodyH + 5;
   }
 
-  // Declaration block — only for viaje (export) certificates
-  if (isViaje) {
-    setFillColor(doc, "#f7fafc");
-    setDrawColor(doc, AZUL_MARINO);
-    doc.setLineWidth(0.5);
-    const declBoxH = 60;
-    doc.rect(MARGIN, y, CONTENT_W, declBoxH, "FD");
+  // Declaration block
+  setFillColor(doc, "#f7fafc");
+  setDrawColor(doc, AZUL_MARINO);
+  doc.setLineWidth(0.5);
+  const declBoxH = 60;
+  doc.rect(MARGIN, y, CONTENT_W, declBoxH, "FD");
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    setTextColor(doc, AZUL_MARINO);
-    doc.text("DECLARACIÓN MÉDICA VETERINARIA", MARGIN + 4, y + 6);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  setTextColor(doc, AZUL_MARINO);
+  doc.text("DECLARACIÓN MÉDICA VETERINARIA", MARGIN + 4, y + 6);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    setTextColor(doc, "#000000");
-    let textY = y + 12;
-    DECLARATION_TEXT.forEach((p) => {
-      const lines = doc.splitTextToSize(p, CONTENT_W - 10);
-      doc.text(lines, MARGIN + 4, textY);
-      textY += lines.length * 4;
-    });
-    const reqLines = DECLARATION_REQUISITES.map((r) => `• ${r}`);
-    reqLines.forEach((r) => {
-      const lines = doc.splitTextToSize(r, CONTENT_W - 14);
-      doc.text(lines, MARGIN + 7, textY);
-      textY += lines.length * 4;
-    });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  setTextColor(doc, "#000000");
+  let textY = y + 12;
+  DECLARATION_TEXT.forEach((p) => {
+    const lines = doc.splitTextToSize(p, CONTENT_W - 10);
+    doc.text(lines, MARGIN + 4, textY);
+    textY += lines.length * 4;
+  });
+  const reqLines = DECLARATION_REQUISITES.map((r) => `• ${r}`);
+  reqLines.forEach((r) => {
+    const lines = doc.splitTextToSize(r, CONTENT_W - 14);
+    doc.text(lines, MARGIN + 7, textY);
+    textY += lines.length * 4;
+  });
 
-    y += declBoxH + 6;
-  }
+  y += declBoxH + 6;
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
@@ -446,9 +441,7 @@ export function downloadLabPDF(data: LabReportData, customSignature?: string | n
 
 export function downloadCertPDF(data: CertificateData, customSignature?: string | null) {
   const doc = generateCertPDF(data, customSignature);
-  const certConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
-  const prefix = certConfig?.value === "viaje" ? "Certificado_Exportacion" : `Certificado_${certConfig?.label ?? ""}`.replace(/\s+/g, "_");
-  doc.save(`${prefix}_${data.patientName || "paciente"}.pdf`);
+  doc.save(`Certificado_Exportacion_${data.patientName || "paciente"}.pdf`);
 }
 
 export function printLabPDF(data: LabReportData, customSignature?: string | null) {

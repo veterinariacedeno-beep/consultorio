@@ -32,8 +32,5 @@ export const MONTHS_ES = [
 ];
 
 export const CERTIFICATE_TYPES: { value: CertificateType; label: string; title: string }[] = [
-  { value: "salud", label: "Certificado de Salud", title: "Certificado de Salud Veterinario" },
-  { value: "vacunacion", label: "Certificado de Vacunación", title: "Certificado de Vacunación" },
-  { value: "viaje", label: "Certificado de Viaje / Exportación", title: "Certificado de Exportación" },
-  { value: "diagnostico", label: "Constancia Médica / Diagnóstico", title: "Constancia Médica Veterinaria" },
+  { value: "viaje", label: "Certificado de Exportación", title: "Certificado de Exportación" },
 ];

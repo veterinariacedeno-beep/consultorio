@@ -10,7 +10,7 @@ import { useApp } from "@/context/AppContext";
 const today = new Date();
 
 const initialCert: CertificateData = {
-  certType: "salud",
+  certType: "viaje",
   patientName: "",
   species: "",
   breed: "",

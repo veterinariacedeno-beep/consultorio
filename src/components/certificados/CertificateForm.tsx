@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { Award, Calendar, Eraser } from "lucide-react";
-import type { CertificateData, CertificateType } from "@/types";
+import type { CertificateData } from "@/types";
 import { MONTHS_ES, CERTIFICATE_TYPES } from "@/data/constants";
 import ClientPetSearch from "@/components/shared/ClientPetSearch";
 import type { SelectedMatch } from "@/components/shared/ClientPetSearch";
@@ -77,21 +77,7 @@ const CertificateForm: FC<Props> = ({ data, onChange }) => {
     <div className="space-y-5">
       <div className="flex items-center gap-2 text-[#1a365d]">
         <Award className="h-5 w-5" />
-        <h2 className="text-lg font-bold">{certTypeConfig?.label ?? "Certificado"}</h2>
-      </div>
-
-      {/* Certificate Type Selector */}
-      <div>
-        <label className="mb-1 block text-xs font-semibold text-gray-600">Tipo de Certificado</label>
-        <select
-          value={data.certType}
-          onChange={(e) => update({ certType: e.target.value as CertificateType })}
-          className="input-base"
-        >
-          {CERTIFICATE_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+        <h2 className="text-lg font-bold">{certTypeConfig?.label ?? "Certificado de Exportación"}</h2>
       </div>
 
       {/* Search bar */}
@@ -164,11 +150,9 @@ const CertificateForm: FC<Props> = ({ data, onChange }) => {
           <Field label="Teléfono de Contacto">
             <input type="text" value={data.ownerPhone} onChange={(e) => update({ ownerPhone: e.target.value })} className="input-base" />
           </Field>
-          {data.certType === "viaje" && (
-            <Field label="Destino de Exportación">
-              <input type="text" value={data.destination} onChange={(e) => update({ destination: e.target.value })} placeholder="País o ciudad de destino" className="input-base" />
-            </Field>
-          )}
+          <Field label="Destino de Exportación">
+            <input type="text" value={data.destination} onChange={(e) => update({ destination: e.target.value })} placeholder="País o ciudad de destino" className="input-base" />
+          </Field>
         </div>
       </div>
 

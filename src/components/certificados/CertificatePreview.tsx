@@ -12,8 +12,7 @@ interface Props {
 
 const CertificatePreview: FC<Props> = ({ data, showSignature, customSignature }) => {
   const certConfig = CERTIFICATE_TYPES.find((t) => t.value === data.certType);
-  const title = certConfig?.title ?? "Certificado";
-  const isViaje = data.certType === "viaje";
+  const title = certConfig?.title ?? "Certificado de Exportación";
 
   return (
     <div className="document-page" id="documento-impresion">
@@ -23,12 +22,7 @@ const CertificatePreview: FC<Props> = ({ data, showSignature, customSignature })
         <h2 className="inline-block rounded bg-[#1a365d] px-8 py-1.5 text-base font-bold uppercase tracking-wide text-white">
           {title}
         </h2>
-        {!isViaje && (
-          <p className="mt-1 text-[12px] font-semibold text-[#2b6cb0]">Consultorio Veterinario Dr. Cedeño</p>
-        )}
-        {isViaje && (
-          <p className="mt-1 text-[12px] font-semibold text-[#2b6cb0]">Declaración Médica Veterinaria</p>
-        )}
+        <p className="mt-1 text-[12px] font-semibold text-[#2b6cb0]">Declaración Médica Veterinaria</p>
       </div>
 
       <table className="mt-4 w-full border-collapse text-[11px]">
@@ -74,14 +68,8 @@ const CertificatePreview: FC<Props> = ({ data, showSignature, customSignature })
           <tr>
             <td className="border border-[#2b6cb0] bg-[#ebf2f8] px-2 py-1 font-bold text-[#1a365d]">Teléfono de Contacto</td>
             <td className="border border-[#2b6cb0] px-2 py-1">{data.ownerPhone || "—"}</td>
-            {isViaje ? (
-              <>
-                <td className="border border-[#2b6cb0] bg-[#ebf2f8] px-2 py-1 font-bold text-[#1a365d]">Destino</td>
-                <td className="border border-[#2b6cb0] px-2 py-1">{data.destination || "—"}</td>
-              </>
-            ) : (
-              <td className="border border-[#2b6cb0] px-2 py-1" colSpan={2}></td>
-            )}
+            <td className="border border-[#2b6cb0] bg-[#ebf2f8] px-2 py-1 font-bold text-[#1a365d]">Destino</td>
+            <td className="border border-[#2b6cb0] px-2 py-1">{data.destination || "—"}</td>
           </tr>
         </tbody>
       </table>
@@ -105,20 +93,18 @@ const CertificatePreview: FC<Props> = ({ data, showSignature, customSignature })
         )}
       </div>
 
-      {/* Declaration block — only for viaje (export) certificates */}
-      {isViaje && (
-        <div className="mt-4 border-l-4 border-[#1a365d] bg-[#f7fafc] px-4 py-3">
-          <p className="mb-2 text-[12px] font-bold uppercase text-[#1a365d]">Declaración Médica Veterinaria</p>
-          {DECLARATION_TEXT.map((p, i) => (
-            <p key={i} className="mb-2 text-justify text-[11px] leading-relaxed text-gray-800">{p}</p>
+      {/* Declaration block */}
+      <div className="mt-4 border-l-4 border-[#1a365d] bg-[#f7fafc] px-4 py-3">
+        <p className="mb-2 text-[12px] font-bold uppercase text-[#1a365d]">Declaración Médica Veterinaria</p>
+        {DECLARATION_TEXT.map((p, i) => (
+          <p key={i} className="mb-2 text-justify text-[11px] leading-relaxed text-gray-800">{p}</p>
+        ))}
+        <ul className="ml-4 list-disc space-y-1">
+          {DECLARATION_REQUISITES.map((r, i) => (
+            <li key={i} className="text-[11px] leading-relaxed text-gray-800">{r}</li>
           ))}
-          <ul className="ml-4 list-disc space-y-1">
-            {DECLARATION_REQUISITES.map((r, i) => (
-              <li key={i} className="text-[11px] leading-relaxed text-gray-800">{r}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        </ul>
+      </div>
 
       <p className="mt-4 text-justify text-[11px] leading-relaxed text-gray-800">
         <span className="font-bold">EXPEDICIÓN:</span> La presente certificación se expide a solicitud de la parte interesada. Dado en la Ciudad de Panamá, a los{" "}
