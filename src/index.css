@@ -82,6 +82,12 @@
 
 /* ===== Print styles ===== */
 @media print {
+  /* Force background colors and borders to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   /* Reset all height/overflow constraints so the browser
      recognizes the full document size and paginates naturally */
   html,
