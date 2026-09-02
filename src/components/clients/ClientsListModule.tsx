@@ -23,7 +23,7 @@ export default function ClientsModule() {
       o.name.toLowerCase().includes(q) ||
       o.phone.includes(search) ||
       o.email.toLowerCase().includes(q);
-    const petMatch = pets.some(p => p.ownerId === o.id && p.name.toLowerCase().includes(q));
+    const petMatch = pets.some(p => p.ownerId === o.id && (p.name.toLowerCase().includes(q) || (p.microchip ?? '').includes(search)));
     return ownerMatch || petMatch;
   });
 
@@ -47,7 +47,7 @@ export default function ClientsModule() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por cliente, mascota, teléfono, correo..."
+            placeholder="Buscar por cliente, mascota, teléfono, microchip..."
             className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>

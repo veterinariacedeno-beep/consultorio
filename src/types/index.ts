@@ -55,6 +55,7 @@ export interface Pet {
   birthDate: string;
   ageManual: string;
   weight: string;
+  microchip: string;
   createdAt: string;
 }
 

@@ -41,6 +41,7 @@ export default function ClientPetSearch({ onSelect, onClear }: Props) {
       if (!owner) continue;
       if (
         pet.name.toLowerCase().includes(q) ||
+        (pet.microchip ?? '').toLowerCase().includes(q) ||
         owner.name.toLowerCase().includes(q) ||
         owner.idNumber?.toLowerCase().includes(q) ||
         owner.phone?.toLowerCase().includes(q)
@@ -123,7 +124,7 @@ export default function ClientPetSearch({ onSelect, onClear }: Props) {
                 setOpen(false);
               }
             }}
-            placeholder="Buscar cliente, cédula o mascota..."
+            placeholder="Buscar cliente, cédula, mascota o microchip..."
             className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 placeholder-gray-400 focus:border-[#2b6cb0] focus:outline-none focus:ring-1 focus:ring-[#2b6cb0]"
           />
           {query && (

@@ -211,6 +211,13 @@ export default function ClientProfile({ ownerId, onBack }: Props) {
                       {pet.species} {pet.breed ? `· ${pet.breed}` : ''} · Edad: {getAge(pet)}
                       {pet.weight ? ` · ${pet.weight} kg` : ''}
                     </p>
+                    {pet.microchip ? (
+                      <p className="text-slate-400 text-xs mt-1">
+                        Microchip: <span className="font-mono text-slate-500">{pet.microchip}</span>
+                      </p>
+                    ) : (
+                      <p className="text-slate-300 text-xs mt-1">Sin microchip</p>
+                    )}
                     {lastService && (
                       <p className="text-slate-400 text-xs mt-1">
                         Última visita: {new Date(lastService.date).toLocaleDateString('es-PA')} ({lastService.type})

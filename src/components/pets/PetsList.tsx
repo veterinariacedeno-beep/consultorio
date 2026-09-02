@@ -123,6 +123,9 @@ export default function PetsList({ filterOwnerId, onSelectPet }: Props) {
                     </div>
                     <p className="text-slate-500 text-xs">{pet.species} · {pet.breed || 'Sin raza'} · {pet.gender}</p>
                     <p className="text-slate-400 text-xs">Edad: {getAge(pet)}{pet.weight ? ` · ${pet.weight} kg` : ''}</p>
+                    {pet.microchip && (
+                      <p className="text-slate-400 text-xs mt-0.5">Microchip: <span className="font-mono text-slate-500">{pet.microchip}</span></p>
+                    )}
                   </div>
                 </div>
 

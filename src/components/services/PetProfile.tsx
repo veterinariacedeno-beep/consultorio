@@ -174,6 +174,7 @@ export default function PetProfile({ petId, onBack }: Props) {
             <Info label="Edad" value={getAge(pet)} />
             <Info label="Peso" value={pet.weight ? `${pet.weight} kg` : '–'} />
             <Info label="Color" value={pet.color || '–'} />
+            <Info label="Microchip" value={pet.microchip || 'Sin microchip'} />
             <Info label="Propietario" value={owner?.name ?? '–'} />
           </div>
         </div>

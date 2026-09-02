@@ -24,6 +24,7 @@ export default function PetForm({ initial, defaultOwnerId, onSave, onClose }: Pr
       birthDate: '',
       ageManual: '',
       weight: '',
+      microchip: '',
       createdAt: new Date().toISOString(),
     }
   );
@@ -126,6 +127,16 @@ export default function PetForm({ initial, defaultOwnerId, onSave, onClose }: Pr
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-600 text-sm font-medium mb-1.5">Número de Microchip</label>
+            <input
+              value={form.microchip}
+              onChange={e => set('microchip', e.target.value)}
+              placeholder="Ej. 985112003456789"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
           </div>
 
           {/* Birth date / age */}
