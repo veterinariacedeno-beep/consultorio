@@ -182,6 +182,20 @@ export interface PharmacySale {
   createdAt: string;
 }
 
+export interface PharmacyRestock {
+  id: string;
+  itemId: string;
+  itemName: string;
+  quantityAdded: number;
+  unitCost: number | null;
+  totalCost: number | null;
+  invoiceRef: string;
+  stockBefore: number;
+  stockAfter: number;
+  date: string;
+  createdAt: string;
+}
+
 // ===== Laboratory & Certificate types (from Labs repo) =====
 
 export type ResultValue = "POSITIVO" | "NEGATIVO" | "PERSONALIZADO";

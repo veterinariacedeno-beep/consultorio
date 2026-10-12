@@ -10,11 +10,15 @@ import {
   TrendingUp,
   Banknote,
   Image as ImageIcon,
+  PackagePlus,
+  CalendarRange,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { PharmacyItem } from '../../types';
 import PharmacyItemForm from './PharmacyItemForm';
 import PharmacySaleForm from './PharmacySaleForm';
+import RestockForm from './RestockForm';
+import BiweeklyReport from './BiweeklyReport';
 
 const CATEGORY_COLORS: Record<PharmacyItem['category'], string> = {
   Medicamento: 'bg-blue-100 text-blue-700',
@@ -25,16 +29,19 @@ const CATEGORY_COLORS: Record<PharmacyItem['category'], string> = {
 
 const LOW_STOCK_THRESHOLD = 5;
 
-type TabType = 'inventory' | 'sales';
+type TabType = 'inventory' | 'sales' | 'biweekly';
 
 export default function PharmacyModule() {
-  const { pharmacyItems, pharmacySales, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale } = useApp();
+  const { pharmacyItems, pharmacySales, pharmacyRestocks, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale, restockPharmacyItem } = useApp();
 
   const [tab, setTab] = useState<TabType>('inventory');
   const [search, setSearch] = useState('');
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [saleFormOpen, setSaleFormOpen] = useState(false);
+  const [restockFormOpen, setRestockFormOpen] = useState(false);
+  const [restockItemId, setRestockItemId] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<PharmacyItem | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase();
@@ -52,6 +59,13 @@ export default function PharmacyModule() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [pharmacySales, search]);
 
+  const filteredRestocks = useMemo(() => {
+    const q = search.toLowerCase();
+    return [...pharmacyRestocks]
+      .filter(r => r.itemName.toLowerCase().includes(q) || r.invoiceRef.toLowerCase().includes(q))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [pharmacyRestocks, search]);
+
   const stats = useMemo(() => {
     const totalItems = pharmacyItems.length;
     const lowStock = pharmacyItems.filter(i => i.stock <= LOW_STOCK_THRESHOLD).length;
@@ -61,6 +75,11 @@ export default function PharmacyModule() {
     const transfer = pharmacySales.filter(s => s.paymentMethod === 'Transferencia').reduce((a, s) => a + s.total, 0);
     return { totalItems, lowStock, totalSalesValue, cash, yappy, transfer };
   }, [pharmacyItems, pharmacySales]);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
 
   function handleSaveItem(item: PharmacyItem) {
     if (editing) {
@@ -80,8 +99,22 @@ export default function PharmacyModule() {
     if (confirm('¿Eliminar esta venta? El stock NO se revertirá.')) deletePharmacySale(id);
   }
 
+  function handleRestock(restock: Parameters<typeof restockPharmacyItem>[0]) {
+    restockPharmacyItem(restock);
+    setRestockFormOpen(false);
+    setRestockItemId(undefined);
+    showToast(`Entrada registrada: +${restock.quantityAdded} unidades de ${restock.itemName}`);
+  }
+
   return (
     <div className="space-y-5">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[60] bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+          <PackagePlus size={16} /> {toast}
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Productos en Inventario" value={String(stats.totalItems)} icon={<Package size={18} />} color="bg-teal-500" />
@@ -101,7 +134,7 @@ export default function PharmacyModule() {
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           <button
             onClick={() => setTab('inventory')}
-            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               tab === 'inventory' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -109,34 +142,55 @@ export default function PharmacyModule() {
           </button>
           <button
             onClick={() => setTab('sales')}
-            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               tab === 'sales' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             Ventas
           </button>
-        </div>
-
-        <div className="flex gap-2 flex-1 max-w-sm sm:ml-auto">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder={tab === 'inventory' ? 'Buscar producto...' : 'Buscar venta...'}
-              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
-        </div>
-
-        {tab === 'inventory' ? (
           <button
-            onClick={() => { setEditing(null); setItemFormOpen(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors whitespace-nowrap"
+            onClick={() => setTab('biweekly')}
+            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+              tab === 'biweekly' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
           >
-            <Plus size={16} /> Nuevo Producto
+            <CalendarRange size={14} className="inline mr-1 -mt-0.5" />
+            Reporte Quincenal
           </button>
-        ) : (
+        </div>
+
+        {tab !== 'biweekly' && (
+          <div className="flex gap-2 flex-1 max-w-sm sm:ml-auto">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={tab === 'inventory' ? 'Buscar producto...' : 'Buscar venta...'}
+                className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {tab === 'inventory' && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setRestockItemId(undefined); setRestockFormOpen(true); }}
+              disabled={pharmacyItems.length === 0}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <PackagePlus size={16} /> Reabastecer
+            </button>
+            <button
+              onClick={() => { setEditing(null); setItemFormOpen(true); }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors whitespace-nowrap"
+            >
+              <Plus size={16} /> Nuevo Producto
+            </button>
+          </div>
+        )}
+        {tab === 'sales' && (
           <button
             onClick={() => setSaleFormOpen(true)}
             disabled={pharmacyItems.filter(i => i.stock > 0).length === 0}
@@ -191,6 +245,13 @@ export default function PharmacyModule() {
                       {/* Hover actions */}
                       <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
+                          onClick={() => { setRestockItemId(item.id); setRestockFormOpen(true); }}
+                          className="p-1.5 rounded-md bg-white/90 text-blue-600 hover:bg-blue-50 shadow-sm"
+                          title="Reabastecer"
+                        >
+                          <PackagePlus size={14} />
+                        </button>
+                        <button
                           onClick={() => { setEditing(item); setItemFormOpen(true); }}
                           className="p-1.5 rounded-md bg-white/90 text-slate-500 hover:text-teal-600 shadow-sm"
                         >
@@ -222,6 +283,48 @@ export default function PharmacyModule() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Restock history */}
+          {filteredRestocks.length > 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                <PackagePlus size={16} className="text-blue-500" />
+                <h3 className="text-slate-700 font-medium text-sm">Historial de Entradas / Reabastecimiento</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide">Fecha</th>
+                      <th className="text-left text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide">Producto</th>
+                      <th className="text-center text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide">+ Cant.</th>
+                      <th className="text-center text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide hidden sm:table-cell">Stock Ant.</th>
+                      <th className="text-center text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide hidden sm:table-cell">Stock Nuevo</th>
+                      <th className="text-left text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide hidden md:table-cell">Factura / Proveedor</th>
+                      <th className="text-right text-slate-600 font-semibold px-5 py-3 text-xs uppercase tracking-wide hidden lg:table-cell">Costo Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredRestocks.slice(0, 20).map(r => (
+                      <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3 text-slate-500 text-xs whitespace-nowrap">
+                          {new Date(r.date + 'T12:00:00').toLocaleDateString('es-PA')}
+                        </td>
+                        <td className="px-5 py-3 text-slate-700 font-medium">{r.itemName}</td>
+                        <td className="px-5 py-3 text-center text-blue-600 font-semibold">+{r.quantityAdded}</td>
+                        <td className="px-5 py-3 text-center text-slate-400 hidden sm:table-cell">{r.stockBefore}</td>
+                        <td className="px-5 py-3 text-center text-slate-700 font-semibold hidden sm:table-cell">{r.stockAfter}</td>
+                        <td className="px-5 py-3 text-slate-500 text-xs hidden md:table-cell">{r.invoiceRef || '—'}</td>
+                        <td className="px-5 py-3 text-right text-slate-600 hidden lg:table-cell">
+                          {r.totalCost !== null ? `$${r.totalCost.toFixed(2)}` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
@@ -284,6 +387,11 @@ export default function PharmacyModule() {
         </>
       )}
 
+      {/* Biweekly report tab */}
+      {tab === 'biweekly' && (
+        <BiweeklyReport sales={pharmacySales} />
+      )}
+
       {itemFormOpen && (
         <PharmacyItemForm
           initial={editing ?? undefined}
@@ -297,6 +405,15 @@ export default function PharmacyModule() {
           items={pharmacyItems.filter(i => i.stock > 0)}
           onSave={sale => { addPharmacySale(sale); setSaleFormOpen(false); }}
           onClose={() => setSaleFormOpen(false)}
+        />
+      )}
+
+      {restockFormOpen && (
+        <RestockForm
+          items={pharmacyItems}
+          preselectedItemId={restockItemId}
+          onSave={handleRestock}
+          onClose={() => { setRestockFormOpen(false); setRestockItemId(undefined); }}
         />
       )}
     </div>

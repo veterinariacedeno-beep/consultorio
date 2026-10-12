@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
+import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, PharmacyRestock, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
 import { HELPER_BASE_WEEKLY, HELPER_COMMISSION_RATE, HELPER_BATH_CORTE_FIXED, HELPER_EXPORTACION_COMMISSION } from '../types';
 import { migrateFromLocalStorage, loadData, saveData } from '../utils/storage';
 
@@ -13,6 +13,7 @@ interface AppContextValue {
   appointments: Appointment[];
   pharmacyItems: PharmacyItem[];
   pharmacySales: PharmacySale[];
+  pharmacyRestocks: PharmacyRestock[];
   expenses: Expense[];
   debts: Debt[];
   certificateRecords: CertificateRecord[];
@@ -44,6 +45,7 @@ interface AppContextValue {
   deletePharmacyItem: (id: string) => void;
   addPharmacySale: (sale: PharmacySale) => void;
   deletePharmacySale: (id: string) => void;
+  restockPharmacyItem: (restock: PharmacyRestock) => void;
 
   addExpense: (e: Expense) => void;
   updateExpense: (e: Expense) => void;
@@ -121,6 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [pharmacyItems, setPharmacyItems] = useState<PharmacyItem[]>([]);
   const [pharmacySales, setPharmacySales] = useState<PharmacySale[]>([]);
+  const [pharmacyRestocks, setPharmacyRestocks] = useState<PharmacyRestock[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [certificateRecords, setCertificateRecords] = useState<CertificateRecord[]>([]);
@@ -131,7 +134,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       await migrateFromLocalStorage();
-      const [o, p, s, inv, ws, ap, pi, ps, ex, db, cr, lr] = await Promise.all([
+      const [o, p, s, inv, ws, ap, pi, ps, pr, ex, db, cr, lr] = await Promise.all([
         loadData<Owner[]>('vc_owners', []),
         loadData<Pet[]>('vc_pets', []),
         loadData<ServiceRecord[]>('vc_services', []),
@@ -140,6 +143,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadData<Appointment[]>('vc_appointments', []),
         loadData<PharmacyItem[]>('vc_pharmacy_items', []),
         loadData<PharmacySale[]>('vc_pharmacy_sales', []),
+        loadData<PharmacyRestock[]>('vc_pharmacy_restocks', []),
         loadData<Expense[]>('vc_expenses', []),
         loadData<Debt[]>('vc_debts', []),
         loadData<CertificateRecord[]>('vc_cert_records', []),
@@ -154,6 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAppointments(ap);
       setPharmacyItems(pi);
       setPharmacySales(ps);
+      setPharmacyRestocks(pr);
       setExpenses(ex);
       setDebts(migrateDebts(db));
       setCertificateRecords(cr);
@@ -172,6 +177,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (!loading) saveData('vc_appointments', appointments); }, [appointments, loading]);
   useEffect(() => { if (!loading) saveData('vc_pharmacy_items', pharmacyItems); }, [pharmacyItems, loading]);
   useEffect(() => { if (!loading) saveData('vc_pharmacy_sales', pharmacySales); }, [pharmacySales, loading]);
+  useEffect(() => { if (!loading) saveData('vc_pharmacy_restocks', pharmacyRestocks); }, [pharmacyRestocks, loading]);
   useEffect(() => { if (!loading) saveData('vc_expenses', expenses); }, [expenses, loading]);
   useEffect(() => { if (!loading) saveData('vc_debts', debts); }, [debts, loading]);
   useEffect(() => { if (!loading) saveData('vc_cert_records', certificateRecords); }, [certificateRecords, loading]);
@@ -254,6 +260,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const deletePharmacySale = useCallback((id: string) =>
     setPharmacySales(prev => prev.filter(x => x.id !== id)), []);
+
+  const restockPharmacyItem = useCallback((restock: PharmacyRestock) => {
+    setPharmacyRestocks(prev => [...prev, restock]);
+    setPharmacyItems(prev =>
+      prev.map(item =>
+        item.id === restock.itemId
+          ? { ...item, stock: restock.stockAfter }
+          : item
+      )
+    );
+  }, []);
 
   const addExpense = useCallback((e: Expense) => setExpenses(prev => [...prev, e]), []);
   const updateExpense = useCallback((e: Expense) => setExpenses(prev => prev.map(x => x.id === e.id ? e : x)), []);
@@ -418,7 +435,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextValue = {
     loading,
     owners, pets, services, invoices, weeklySnapshots, appointments,
-    pharmacyItems, pharmacySales, expenses, debts,
+    pharmacyItems, pharmacySales, pharmacyRestocks, expenses, debts,
     certificateRecords, labRecords,
     addOwner, updateOwner, deleteOwner,
     addPet, updatePet, deletePet,
@@ -427,7 +444,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addAppointment, updateAppointment, deleteAppointment,
     getTodayAppointments, getUpcomingAppointments,
     addPharmacyItem, updatePharmacyItem, deletePharmacyItem,
-    addPharmacySale, deletePharmacySale,
+    addPharmacySale, deletePharmacySale, restockPharmacyItem,
     addExpense, updateExpense, deleteExpense,
     addDebt, updateDebt, deleteDebt, addDebtPayment, addDebtPayments, deleteDebtPayment,
     addCertificateRecord, deleteCertificateRecord, addLabRecord, deleteLabRecord,
