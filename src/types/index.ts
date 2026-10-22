@@ -159,6 +159,8 @@ export interface Appointment {
   createdAt: string;
 }
 
+export type ReminderInterval = 'Dias' | 'Semanas' | 'Meses' | 'Años';
+
 export interface PharmacyItem {
   id: string;
   name: string;
@@ -166,6 +168,9 @@ export interface PharmacyItem {
   stock: number;
   category: 'Medicamento' | 'Accesorio' | 'Alimento' | 'Otro';
   imageUrl?: string;
+  reminderEnabled: boolean;
+  reminderFrequency: number;
+  reminderInterval: ReminderInterval;
   createdAt: string;
 }
 
@@ -193,6 +198,24 @@ export interface PharmacyRestock {
   stockBefore: number;
   stockAfter: number;
   date: string;
+  createdAt: string;
+}
+
+export type ReminderStatus = 'Pendiente' | 'Completado' | 'Archivado';
+
+export interface Reminder {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  ownerPhone: string;
+  petId: string;
+  petName: string;
+  itemId: string;
+  itemName: string;
+  saleDate: string;
+  dueDate: string;
+  status: ReminderStatus;
+  notes: string;
   createdAt: string;
 }
 

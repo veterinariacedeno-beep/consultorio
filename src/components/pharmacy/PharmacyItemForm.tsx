@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
-import { X, Image as ImageIcon } from 'lucide-react';
-import type { PharmacyItem } from '../../types';
+import { X, Image as ImageIcon, BellRing } from 'lucide-react';
+import type { PharmacyItem, ReminderInterval } from '../../types';
 import { compressImage } from '../../utils/image';
 
 interface Props {
@@ -19,6 +19,9 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
       salePrice: 0,
       stock: 0,
       category: 'Medicamento',
+      reminderEnabled: false,
+      reminderFrequency: 1,
+      reminderInterval: 'Meses',
       createdAt: new Date().toISOString(),
     }
   );
@@ -171,6 +174,53 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
+          </div>
+
+          {/* Reminder config */}
+          <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.reminderEnabled}
+                onChange={e => set('reminderEnabled', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span className="text-slate-700 text-sm font-medium flex items-center gap-1.5">
+                <BellRing size={14} className="text-teal-500" />
+                Activar recordatorio periódico
+              </span>
+            </label>
+            {form.reminderEnabled && (
+              <div className="grid grid-cols-2 gap-3 pl-6">
+                <div>
+                  <label className="block text-slate-500 text-xs mb-1">Frecuencia</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.reminderFrequency}
+                    onChange={e => set('reminderFrequency', parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-xs mb-1">Intervalo</label>
+                  <select
+                    value={form.reminderInterval}
+                    onChange={e => set('reminderInterval', e.target.value as ReminderInterval)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option>Dias</option>
+                    <option>Semanas</option>
+                    <option>Meses</option>
+                    <option>Años</option>
+                  </select>
+                </div>
+                <p className="col-span-2 text-slate-400 text-xs">
+                  Al vender este producto, se creará automáticamente un recordatorio para dentro de {form.reminderFrequency} {form.reminderInterval.toLowerCase()}.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">

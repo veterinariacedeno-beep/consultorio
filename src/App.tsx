@@ -14,6 +14,7 @@ import WeeklyRecordModule from './components/weekly/WeeklyRecordModule';
 import FinancialReportModule from './components/financial/FinancialReportModule';
 import LaboratoryModule from './components/laboratorio/LaboratoryModule';
 import CertificadosModule from './components/certificados/CertificadosModule';
+import RemindersModule from './components/reminders/RemindersModule';
 
 function AppInner() {
   const { loading } = useApp();
@@ -56,6 +57,8 @@ function AppInner() {
         return <LaboratoryModule />;
       case 'certificados':
         return <CertificadosModule />;
+      case 'reminders':
+        return <RemindersModule />;
     }
   }
 

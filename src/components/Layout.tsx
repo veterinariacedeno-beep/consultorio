@@ -15,6 +15,7 @@ import {
   BarChart3,
   FlaskConical,
   Award,
+  BellRing,
 } from 'lucide-react';
 
 export type ActiveView =
@@ -29,7 +30,8 @@ export type ActiveView =
   | 'weekly'
   | 'financial-report'
   | 'laboratorio'
-  | 'certificados';
+  | 'certificados'
+  | 'reminders';
 
 interface NavItem {
   id: ActiveView;
@@ -50,6 +52,7 @@ const navItems: NavItem[] = [
   { id: 'certificados', label: 'Certificados', icon: <Award size={20} /> },
   { id: 'expenses', label: 'Gastos / Salidas', icon: <ShoppingBag size={20} /> },
   { id: 'debts', label: 'Deudas', icon: <CreditCard size={20} /> },
+  { id: 'reminders', label: 'Recordatorios', icon: <BellRing size={20} /> },
 ];
 
 interface Props {

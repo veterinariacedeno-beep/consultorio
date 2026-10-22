@@ -32,7 +32,7 @@ const LOW_STOCK_THRESHOLD = 5;
 type TabType = 'inventory' | 'sales' | 'biweekly';
 
 export default function PharmacyModule() {
-  const { pharmacyItems, pharmacySales, pharmacyRestocks, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale, restockPharmacyItem } = useApp();
+  const { pharmacyItems, pharmacySales, pharmacyRestocks, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale, restockPharmacyItem, addReminder } = useApp();
 
   const [tab, setTab] = useState<TabType>('inventory');
   const [search, setSearch] = useState('');
@@ -403,7 +403,7 @@ export default function PharmacyModule() {
       {saleFormOpen && (
         <PharmacySaleForm
           items={pharmacyItems.filter(i => i.stock > 0)}
-          onSave={sale => { addPharmacySale(sale); setSaleFormOpen(false); }}
+          onSave={(sale, reminder) => { addPharmacySale(sale); if (reminder) addReminder(reminder); setSaleFormOpen(false); }}
           onClose={() => setSaleFormOpen(false)}
         />
       )}
