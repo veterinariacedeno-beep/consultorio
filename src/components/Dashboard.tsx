@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DollarSign,
   Banknote,
@@ -9,10 +9,19 @@ import {
   PawPrint,
   Users,
   ArrowLeftRight,
+  BellRing,
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  Phone,
+  Copy,
+  Check,
+  ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { localDateString } from '../context/AppContext';
-import type { ServiceType } from '../types';
+import type { ServiceType, Reminder } from '../types';
+import type { ActiveView } from './Layout';
 
 function formatCurrency(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -29,6 +38,30 @@ function getWeekLabel(): string {
   const fmt = (d: Date) =>
     d.toLocaleDateString('es-PA', { day: '2-digit', month: 'short' });
   return `${fmt(mon)} – ${fmt(sat)}`;
+}
+
+function isOverdue(r: Reminder): boolean {
+  return r.status === 'Pendiente' && r.dueDate < localDateString();
+}
+
+function isToday(r: Reminder): boolean {
+  return r.status === 'Pendiente' && r.dueDate === localDateString();
+}
+
+function isWithinWeek(r: Reminder): boolean {
+  if (r.status !== 'Pendiente') return false;
+  const today = localDateString();
+  if (r.dueDate < today) return false;
+  const in7 = new Date();
+  in7.setDate(in7.getDate() + 7);
+  return r.dueDate <= localDateString(in7);
+}
+
+function daysOverdue(dueDate: string): number {
+  const due = new Date(dueDate + 'T12:00:00');
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 const SERVICE_COLORS: Record<ServiceType, string> = {
@@ -48,17 +81,32 @@ const SERVICE_COLORS: Record<ServiceType, string> = {
   Otro: 'bg-slate-400',
 };
 
-export default function Dashboard() {
-  const { owners, pets, getCurrentWeekServices, getWeeklyTotals, services } = useApp();
+interface Props {
+  onNavigate: (v: ActiveView) => void;
+}
+
+export default function Dashboard({ onNavigate }: Props) {
+  const { owners, pets, getCurrentWeekServices, getWeeklyTotals, services, reminders, updateReminder } = useApp();
 
   const weekServices = getCurrentWeekServices();
-
-  // Includes both service payments AND debt abonos, broken down by method.
   const totals = useMemo(() => getWeeklyTotals(), [getWeeklyTotals]);
 
   const cashPct = totals.total > 0 ? (totals.cash / totals.total) * 100 : 0;
   const yappyPct = totals.total > 0 ? (totals.yappy / totals.total) * 100 : 0;
   const transferPct = totals.total > 0 ? (totals.transfer / totals.total) * 100 : 0;
+
+  const reminderStats = useMemo(() => {
+    const overdue = reminders.filter(isOverdue);
+    const today = reminders.filter(isToday);
+    const week = reminders.filter(isWithinWeek);
+    return { overdueCount: overdue.length, todayCount: today.length, weekCount: week.length };
+  }, [reminders]);
+
+  const urgentReminders = useMemo(() => {
+    return reminders
+      .filter(r => isOverdue(r) || isToday(r))
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [reminders]);
 
   const servicesByType = useMemo(() => {
     const map: Partial<Record<ServiceType, number>> = {};
@@ -99,6 +147,7 @@ export default function Dashboard() {
   }, [weekServices]);
 
   const maxDaily = Math.max(...dailyRevenue.map(d => d.total), 1);
+  const hasUrgent = urgentReminders.length > 0;
 
   return (
     <div className="space-y-6">
@@ -112,6 +161,86 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      {/* Reminder stat cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <ReminderStatCard
+          label="Vencidos"
+          value={reminderStats.overdueCount}
+          icon={<AlertTriangle size={20} />}
+          color={reminderStats.overdueCount > 0 ? 'bg-red-500' : 'bg-slate-400'}
+          alert={reminderStats.overdueCount > 0}
+        />
+        <ReminderStatCard
+          label="Para Hoy"
+          value={reminderStats.todayCount}
+          icon={<CalendarClock size={20} />}
+          color={reminderStats.todayCount > 0 ? 'bg-amber-500' : 'bg-slate-400'}
+          alert={reminderStats.todayCount > 0}
+        />
+        <ReminderStatCard
+          label="Próximos 7 días"
+          value={reminderStats.weekCount}
+          icon={<BellRing size={20} />}
+          color="bg-blue-500"
+        />
+      </div>
+
+      {/* Acción Requerida Hoy */}
+      {hasUrgent ? (
+        <div className="bg-white rounded-xl border-2 border-amber-200 overflow-hidden">
+          <div className="bg-amber-50 border-b border-amber-100 px-5 py-3 flex items-center gap-2">
+            <AlertTriangle size={18} className="text-amber-600" />
+            <h3 className="text-amber-800 font-semibold text-sm">Acción Requerida Hoy</h3>
+            <span className="ml-auto text-amber-600 text-xs font-medium">
+              {urgentReminders.length} recordatorio{urgentReminders.length !== 1 ? 's' : ''} prioritario{urgentReminders.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="text-left text-slate-500 font-medium px-4 py-2.5 text-xs uppercase tracking-wide">Mascota / Dueño</th>
+                  <th className="text-left text-slate-500 font-medium px-4 py-2.5 text-xs uppercase tracking-wide hidden sm:table-cell">Teléfono</th>
+                  <th className="text-left text-slate-500 font-medium px-4 py-2.5 text-xs uppercase tracking-wide">Medicamento / Vacuna</th>
+                  <th className="text-center text-slate-500 font-medium px-4 py-2.5 text-xs uppercase tracking-wide">Estado</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {urgentReminders.map(r => {
+                  const overdue = isOverdue(r);
+                  const delay = overdue ? daysOverdue(r.dueDate) : 0;
+                  return (
+                    <UrgentReminderRow
+                      key={r.id}
+                      reminder={r}
+                      overdue={overdue}
+                      delay={delay}
+                      onComplete={() => updateReminder({ ...r, status: 'Completado' })}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 border-t border-slate-100">
+            <button
+              onClick={() => onNavigate('reminders')}
+              className="text-teal-600 text-sm font-medium hover:underline flex items-center gap-1"
+            >
+              Ver todos los recordatorios <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 size={24} className="text-green-500" />
+          </div>
+          <p className="text-slate-600 text-sm font-medium">Todo al día: no hay dosis pendientes por contactar hoy.</p>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -236,6 +365,82 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ReminderStatCard({ label, value, icon, color, alert }: { label: string; value: number; icon: React.ReactNode; color: string; alert?: boolean }) {
+  return (
+    <div className={`bg-white rounded-xl border p-4 flex flex-col gap-3 ${alert ? 'border-red-200' : 'border-slate-200'}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-slate-500 text-xs font-medium uppercase tracking-wide leading-tight">{label}</span>
+        <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center text-white flex-shrink-0`}>
+          {icon}
+        </div>
+      </div>
+      <div>
+        <p className={`font-bold text-2xl leading-none ${alert ? 'text-red-600' : 'text-slate-800'}`}>{value}</p>
+        {alert && <p className="text-red-500 text-xs mt-1">¡Requiere atención!</p>}
+      </div>
+    </div>
+  );
+}
+
+function UrgentReminderRow({ reminder, overdue, delay, onComplete }: { reminder: Reminder; overdue: boolean; delay: number; onComplete: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  function copyPhone() {
+    if (!reminder.ownerPhone) return;
+    navigator.clipboard.writeText(reminder.ownerPhone).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <tr className={`hover:bg-slate-50 transition-colors ${overdue ? 'bg-red-50/30' : 'bg-amber-50/30'}`}>
+      <td className="px-4 py-3">
+        <p className="text-slate-800 font-medium text-sm flex items-center gap-1.5">
+          <PawPrint size={12} className="text-slate-400" />
+          {reminder.petName || '—'}
+        </p>
+        <p className="text-slate-400 text-xs">{reminder.ownerName || 'Sin cliente'}</p>
+      </td>
+      <td className="px-4 py-3 hidden sm:table-cell">
+        {reminder.ownerPhone ? (
+          <button
+            onClick={copyPhone}
+            className="text-slate-600 text-sm flex items-center gap-1.5 hover:text-teal-600 transition-colors"
+            title="Copiar al portapapeles"
+          >
+            <Phone size={12} className="text-slate-400" />
+            {reminder.ownerPhone}
+            {copied ? <Check size={12} className="text-green-500" /> : <Copy size={11} className="text-slate-300" />}
+          </button>
+        ) : (
+          <span className="text-slate-300 text-xs">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-slate-600 text-sm">{reminder.itemName}</td>
+      <td className="px-4 py-3 text-center">
+        {overdue ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+            <AlertTriangle size={10} /> {delay} día{delay !== 1 ? 's' : ''} de retraso
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+            <CalendarClock size={10} /> Vence hoy
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <button
+          onClick={onComplete}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-green-50 text-green-700 text-xs font-medium hover:bg-green-100 transition-colors whitespace-nowrap"
+        >
+          <CheckCircle2 size={12} /> Completado
+        </button>
+      </td>
+    </tr>
   );
 }
 

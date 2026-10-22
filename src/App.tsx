@@ -34,7 +34,7 @@ function AppInner() {
   function renderView() {
     switch (view) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setView} />;
       case 'appointments':
         return <AppointmentsModule />;
       case 'clients':
