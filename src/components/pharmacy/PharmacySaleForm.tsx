@@ -73,17 +73,28 @@ export default function PharmacySaleForm({ items, onSave, onClose }: Props) {
     e.preventDefault();
     if (!selectedItem || quantity < 1 || insufficient) return;
 
+    const unitCost = selectedItem.costPrice ?? 0;
+    const totalCost = unitCost * quantity;
+    const totalVenta = total;
+    const ganancia = totalVenta - totalCost;
+    const now = new Date().toISOString();
+
     const sale: PharmacySale = {
       id: crypto.randomUUID(),
       itemId: selectedItem.id,
       itemName: selectedItem.name,
       quantity,
       unitPrice: selectedItem.salePrice,
+      unitCost,
       total,
+      totalCost,
+      totalVenta,
+      ganancia,
       paymentMethod,
       date,
+      fechaVenta: now,
       notes,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     };
 
     let reminder: Reminder | null = null;
@@ -258,9 +269,19 @@ export default function PharmacySaleForm({ items, onSave, onClose }: Props) {
           </div>
 
           {selectedItem && (
-            <div className="bg-teal-50 rounded-lg p-3 flex justify-between items-center">
-              <span className="text-teal-700 text-sm font-medium">Total a cobrar</span>
-              <span className="text-teal-800 font-bold text-lg">${total.toFixed(2)}</span>
+            <div className="bg-slate-50 rounded-lg p-3 space-y-1.5">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 text-sm">Costo de mercancía</span>
+                <span className="text-slate-600 font-medium text-sm">${(selectedItem.costPrice * quantity).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-teal-700 text-sm font-medium">Total a cobrar</span>
+                <span className="text-teal-800 font-bold text-lg">${total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                <span className="text-green-700 text-sm font-medium">Ganancia estimada</span>
+                <span className="text-green-700 font-bold text-sm">${(total - selectedItem.costPrice * quantity).toFixed(2)}</span>
+              </div>
             </div>
           )}
 

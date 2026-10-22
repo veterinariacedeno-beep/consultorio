@@ -274,6 +274,14 @@ export default function PharmacyModule() {
                           Stock: {item.stock}
                         </span>
                       </div>
+                      {item.costPrice > 0 && item.salePrice > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400">Costo: ${item.costPrice.toFixed(2)}</span>
+                          <span className={`font-semibold ${item.salePrice > item.costPrice ? 'text-green-600' : 'text-red-600'}`}>
+                            Margen: {(((item.salePrice - item.costPrice) / item.salePrice) * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      )}
                       {lowStock && !outOfStock && (
                         <p className="text-xs text-amber-500 flex items-center gap-1">
                           <AlertTriangle size={11} /> Stock bajo

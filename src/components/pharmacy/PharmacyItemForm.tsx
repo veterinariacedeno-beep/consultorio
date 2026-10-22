@@ -16,6 +16,7 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
     initial ?? {
       id: crypto.randomUUID(),
       name: '',
+      costPrice: 0,
       salePrice: 0,
       stock: 0,
       category: 'Medicamento',
@@ -151,6 +152,19 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className="block text-slate-600 text-sm font-medium mb-1.5">Precio de Costo / Compra (USD) *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.costPrice}
+                onChange={e => set('costPrice', parseFloat(e.target.value) || 0)}
+                required
+                placeholder="Lo que cuesta adquirirlo"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+            <div>
               <label className="block text-slate-600 text-sm font-medium mb-1.5">Precio de Venta (USD) *</label>
               <input
                 type="number"
@@ -162,18 +176,39 @@ export default function PharmacyItemForm({ initial, onSave, onClose }: Props) {
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
-            <div>
-              <label className="block text-slate-600 text-sm font-medium mb-1.5">Stock Actual *</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={form.stock}
-                onChange={e => set('stock', parseInt(e.target.value) || 0)}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
+          </div>
+
+          {/* Margin display */}
+          {form.salePrice > 0 && (
+            <div className={`rounded-lg p-3 flex items-center justify-between ${
+              form.salePrice > form.costPrice ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100'
+            }`}>
+              <div>
+                <p className="text-slate-500 text-xs font-medium">Ganancia por unidad</p>
+                <p className={`font-bold text-sm ${form.salePrice > form.costPrice ? 'text-green-700' : 'text-red-700'}`}>
+                  ${(form.salePrice - form.costPrice).toFixed(2)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 text-xs font-medium">Margen</p>
+                <p className={`font-bold text-lg ${form.salePrice > form.costPrice ? 'text-green-700' : 'text-red-700'}`}>
+                  {(((form.salePrice - form.costPrice) / form.salePrice) * 100).toFixed(1)}%
+                </p>
+              </div>
             </div>
+          )}
+
+          <div>
+            <label className="block text-slate-600 text-sm font-medium mb-1.5">Stock Actual *</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.stock}
+              onChange={e => set('stock', parseInt(e.target.value) || 0)}
+              required
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
           </div>
 
           {/* Reminder config */}

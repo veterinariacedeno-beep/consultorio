@@ -164,6 +164,7 @@ export type ReminderInterval = 'Dias' | 'Semanas' | 'Meses' | 'Años';
 export interface PharmacyItem {
   id: string;
   name: string;
+  costPrice: number;
   salePrice: number;
   stock: number;
   category: 'Medicamento' | 'Accesorio' | 'Alimento' | 'Otro';
@@ -180,9 +181,14 @@ export interface PharmacySale {
   itemName: string;
   quantity: number;
   unitPrice: number;
+  unitCost: number;
   total: number;
+  totalCost: number;
+  totalVenta: number;
+  ganancia: number;
   paymentMethod: PaymentMethod;
   date: string;
+  fechaVenta: string;
   notes: string;
   createdAt: string;
 }
