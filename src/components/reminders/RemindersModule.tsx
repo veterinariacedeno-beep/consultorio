@@ -50,6 +50,18 @@ export default function RemindersModule() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  function showError(msg: string) {
+    setErrorToast(msg);
+    setTimeout(() => setErrorToast(null), 5000);
+  }
+
+  function showSuccess(msg: string) {
+    setSuccessToast(msg);
+    setTimeout(() => setSuccessToast(null), 3000);
+  }
 
   const counts = useMemo(() => {
     return {
@@ -61,7 +73,7 @@ export default function RemindersModule() {
   }, [reminders]);
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     let list = reminders.filter(r => {
       if (filter === 'today') return isToday(r);
       if (filter === 'week') return isWithinWeek(r);
@@ -70,12 +82,13 @@ export default function RemindersModule() {
       return true;
     });
     if (q) {
-      list = list.filter(r =>
-        r.ownerName.toLowerCase().includes(q) ||
-        r.petName.toLowerCase().includes(q) ||
-        r.itemName.toLowerCase().includes(q) ||
-        r.ownerPhone.includes(search)
-      );
+      list = list.filter(r => {
+        const ownerName = (r.ownerName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const petName = (r.petName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const phone = (r.ownerPhone || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const itemName = (r.itemName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return ownerName.includes(q) || petName.includes(q) || phone.includes(q) || itemName.includes(q);
+      });
     }
     return list.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }, [reminders, filter, search]);
@@ -93,13 +106,29 @@ export default function RemindersModule() {
   }
 
   function handleSaveReminder(r: Reminder) {
-    if (editing) {
-      updateReminder(r);
-    } else {
-      addReminder(r);
+    try {
+      const missing: string[] = [];
+      if (!r.ownerName) missing.push('Cliente');
+      if (!r.ownerPhone) missing.push('Teléfono');
+      if (!r.petName) missing.push('Mascota');
+      if (!r.itemName) missing.push('Producto');
+      if (!r.dueDate) missing.push('Fecha de recordatorio');
+      if (missing.length > 0) {
+        showError(`No se pudo guardar el recordatorio. Faltan campos: ${missing.join(', ')}.`);
+        return;
+      }
+      if (editing) {
+        updateReminder(r);
+      } else {
+        addReminder(r);
+      }
+      setCreateOpen(false);
+      setEditing(null);
+      showSuccess(editing ? 'Recordatorio actualizado correctamente.' : 'Recordatorio creado correctamente.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showError(`Error al guardar el recordatorio: ${msg}`);
     }
-    setCreateOpen(false);
-    setEditing(null);
   }
 
   return (
@@ -148,9 +177,18 @@ export default function RemindersModule() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por cliente, mascota, producto..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Buscar por cliente, mascota, teléfono o producto..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              title="Limpiar búsqueda"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
         <button
           onClick={() => { setEditing(null); setCreateOpen(true); }}
@@ -160,12 +198,24 @@ export default function RemindersModule() {
         </button>
       </div>
 
+      {/* Toast notifications */}
+      {errorToast && (
+        <div className="fixed top-6 right-6 z-[70] bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium max-w-md">
+          <AlertTriangle size={16} className="flex-shrink-0" /> {errorToast}
+        </div>
+      )}
+      {successToast && (
+        <div className="fixed top-6 right-6 z-[70] bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium max-w-md">
+          <CheckCircle2 size={16} className="flex-shrink-0" /> {successToast}
+        </div>
+      )}
+
       {/* Reminders table */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
           <BellRing size={32} className="text-slate-200 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">
-            {search ? 'Sin resultados.' : 'No hay recordatorios en esta categoría.'}
+            {search ? `No se encontraron recordatorios para '${search}'.` : 'No hay recordatorios en esta categoría.'}
           </p>
         </div>
       ) : (
@@ -310,29 +360,65 @@ function ReminderForm({
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? localDateString(new Date(Date.now() + 30 * 86400000)));
   const [notes, setNotes] = useState(initial?.notes ?? '');
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const ownerPets = pets.filter(p => p.ownerId === ownerId);
   const selectedOwner = owners.find(o => o.id === ownerId);
   const selectedPet = pets.find(p => p.id === petId);
   const selectedItem = pharmacyItems.find(i => i.id === itemId);
 
+  function normalizeDate(d: string): string {
+    if (!d) return '';
+    const parts = d.split('-');
+    if (parts.length === 3) return d;
+    const dt = new Date(d + 'T12:00:00');
+    if (isNaN(dt.getTime())) return '';
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!ownerId || !itemId || !dueDate) return;
-    onSave({
-      id: initial?.id ?? crypto.randomUUID(),
-      ownerId,
-      ownerName: selectedOwner?.name ?? '',
-      ownerPhone: selectedOwner?.phone ?? '',
-      petId,
-      petName: selectedPet?.name ?? '',
-      itemId,
-      itemName: selectedItem?.name ?? '',
-      saleDate: initial?.saleDate ?? localDateString(),
-      dueDate,
-      status: initial?.status ?? 'Pendiente',
-      notes,
-      createdAt: initial?.createdAt ?? new Date().toISOString(),
-    });
+    setFormError(null);
+    try {
+      const missing: string[] = [];
+      if (!ownerId && !selectedOwner) missing.push('Cliente');
+      if (!itemId && !selectedItem) missing.push('Producto');
+      if (!dueDate) missing.push('Fecha de recordatorio');
+      if (missing.length > 0) {
+        setFormError(`Faltan campos obligatorios: ${missing.join(', ')}.`);
+        return;
+      }
+
+      const normalizedDueDate = normalizeDate(dueDate);
+      if (!normalizedDueDate) {
+        setFormError('La fecha del recordatorio no tiene un formato válido (YYYY-MM-DD).');
+        return;
+      }
+
+      const reminder: Reminder = {
+        id: initial?.id ?? crypto.randomUUID(),
+        ownerId: ownerId || '',
+        ownerName: selectedOwner?.name ?? (initial?.ownerName ?? 'Cliente no especificado'),
+        ownerPhone: selectedOwner?.phone ?? (initial?.ownerPhone ?? ''),
+        petId: petId || '',
+        petName: selectedPet?.name ?? (initial?.petName ?? 'Mascota no especificada'),
+        itemId: itemId || '',
+        itemName: selectedItem?.name ?? (initial?.itemName ?? 'Producto no especificado'),
+        saleDate: initial?.saleDate ?? localDateString(),
+        dueDate: normalizedDueDate,
+        status: initial?.status ?? 'Pendiente',
+        notes,
+        createdAt: initial?.createdAt ?? new Date().toISOString(),
+      };
+
+      onSave(reminder);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFormError(`Error al guardar el recordatorio: ${msg}`);
+    }
   }
 
   return (
@@ -349,6 +435,12 @@ function ReminderForm({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {formError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{formError}</p>
+            </div>
+          )}
           <div>
             <label className="block text-slate-600 text-sm font-medium mb-1.5">Cliente *</label>
             <select

@@ -99,21 +99,49 @@ export default function PharmacySaleForm({ items, onSave, onClose }: Props) {
 
     let reminder: Reminder | null = null;
     if (reminderEnabled && reminderDueDate && ownerId) {
-      reminder = {
-        id: crypto.randomUUID(),
-        ownerId,
-        ownerName: selectedOwner?.name ?? '',
-        ownerPhone: selectedOwner?.phone ?? '',
-        petId: petId,
-        petName: selectedPet?.name ?? '',
-        itemId: selectedItem.id,
-        itemName: selectedItem.name,
-        saleDate: date,
-        dueDate: reminderDueDate,
-        status: 'Pendiente',
-        notes: '',
-        createdAt: new Date().toISOString(),
-      };
+      try {
+        const normalizedDue = (() => {
+          const parts = reminderDueDate.split('-');
+          if (parts.length === 3) return reminderDueDate;
+          const dt = new Date(reminderDueDate + 'T12:00:00');
+          if (isNaN(dt.getTime())) return '';
+          return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        })();
+
+        if (!normalizedDue) {
+          alert('La fecha del recordatorio no tiene un formato válido.');
+          return;
+        }
+
+        const ownerName = selectedOwner?.name ?? '';
+        const ownerPhone = selectedOwner?.phone ?? '';
+        const petName = selectedPet?.name ?? '';
+
+        if (!ownerName && !ownerPhone && !petName) {
+          alert('No se pudo crear el recordatorio: faltan datos del cliente y mascota.');
+          return;
+        }
+
+        reminder = {
+          id: crypto.randomUUID(),
+          ownerId,
+          ownerName: ownerName || 'Cliente no especificado',
+          ownerPhone: ownerPhone || '',
+          petId: petId || '',
+          petName: petName || 'Mascota no especificada',
+          itemId: selectedItem.id,
+          itemName: selectedItem.name,
+          saleDate: date,
+          dueDate: normalizedDue,
+          status: 'Pendiente',
+          notes: '',
+          createdAt: new Date().toISOString(),
+        };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        alert(`Error al crear el recordatorio: ${msg}`);
+        return;
+      }
     }
 
     onSave(sale, reminder);
