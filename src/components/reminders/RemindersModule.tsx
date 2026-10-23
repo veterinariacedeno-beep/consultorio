@@ -12,6 +12,7 @@ import {
   CalendarPlus,
   X,
   Pencil,
+  Check,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { localDateString } from '../../context/AppContext';
@@ -355,8 +356,14 @@ function ReminderForm({
   onClose: () => void;
 }) {
   const [ownerId, setOwnerId] = useState(initial?.ownerId ?? '');
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [ownerFocused, setOwnerFocused] = useState(false);
   const [petId, setPetId] = useState(initial?.petId ?? '');
+  const [petSearch, setPetSearch] = useState('');
+  const [petFocused, setPetFocused] = useState(false);
   const [itemId, setItemId] = useState(initial?.itemId ?? '');
+  const [itemSearch, setItemSearch] = useState('');
+  const [itemFocused, setItemFocused] = useState(false);
   const [dueDate, setDueDate] = useState(initial?.dueDate ?? localDateString(new Date(Date.now() + 30 * 86400000)));
   const [notes, setNotes] = useState(initial?.notes ?? '');
 
@@ -366,6 +373,58 @@ function ReminderForm({
   const selectedOwner = owners.find(o => o.id === ownerId);
   const selectedPet = pets.find(p => p.id === petId);
   const selectedItem = pharmacyItems.find(i => i.id === itemId);
+
+  function norm(s: string): string {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  const filteredOwners = useMemo(() => {
+    const q = norm(ownerSearch);
+    if (!q) return owners;
+    return owners.filter(o =>
+      norm(o.name).includes(q) ||
+      norm(o.phone ?? '').includes(q)
+    );
+  }, [owners, ownerSearch]);
+
+  const filteredPets = useMemo(() => {
+    const q = norm(petSearch);
+    if (!q) return ownerPets;
+    return ownerPets.filter(p =>
+      norm(p.name).includes(q) ||
+      norm(p.breed ?? '').includes(q) ||
+      norm(p.species ?? '').includes(q)
+    );
+  }, [ownerPets, petSearch]);
+
+  const filteredItems = useMemo(() => {
+    const q = norm(itemSearch);
+    if (!q) return pharmacyItems;
+    return pharmacyItems.filter(i =>
+      norm(i.name).includes(q) ||
+      norm(i.category).includes(q)
+    );
+  }, [pharmacyItems, itemSearch]);
+
+  function selectOwner(id: string) {
+    setOwnerId(id);
+    setOwnerSearch('');
+    setOwnerFocused(false);
+    setPetId('');
+    setPetSearch('');
+  }
+
+  function selectPet(id: string) {
+    setPetId(id);
+    setPetSearch('');
+    setPetFocused(false);
+  }
+
+  function selectItem(id: string) {
+    setItemId(id);
+    setItemSearch('');
+    setItemFocused(false);
+  }
 
   function normalizeDate(d: string): string {
     if (!d) return '';
@@ -443,41 +502,54 @@ function ReminderForm({
           )}
           <div>
             <label className="block text-slate-600 text-sm font-medium mb-1.5">Cliente *</label>
-            <select
-              value={ownerId}
-              onChange={e => { setOwnerId(e.target.value); setPetId(''); }}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="">Seleccionar cliente</option>
-              {owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            <SearchableField
+              value={ownerSearch}
+              onChange={(v) => { setOwnerSearch(v); setOwnerFocused(true); if (ownerId) { setOwnerId(''); setPetId(''); setPetSearch(''); } }}
+              onFocus={() => setOwnerFocused(true)}
+              onBlur={() => setTimeout(() => setOwnerFocused(false), 150)}
+              focused={ownerFocused}
+              placeholder="Buscar cliente por nombre o teléfono..."
+              selectedLabel={selectedOwner ? selectedOwner.name : null}
+              onClear={() => { setOwnerId(''); setOwnerSearch(''); setPetId(''); setPetSearch(''); }}
+              results={filteredOwners.map(o => ({ id: o.id, label: o.name, sub: o.phone || undefined }))}
+              onSelect={selectOwner}
+              emptyMsg={`No se encontraron clientes para '${ownerSearch}'`}
+            />
           </div>
 
           <div>
             <label className="block text-slate-600 text-sm font-medium mb-1.5">Mascota</label>
-            <select
-              value={petId}
-              onChange={e => setPetId(e.target.value)}
+            <SearchableField
+              value={petSearch}
+              onChange={(v) => { setPetSearch(v); setPetFocused(true); if (petId) setPetId(''); }}
+              onFocus={() => setPetFocused(true)}
+              onBlur={() => setTimeout(() => setPetFocused(false), 150)}
+              focused={petFocused}
+              placeholder={ownerId ? "Buscar mascota..." : "Selecciona un cliente primero"}
               disabled={!ownerId}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
-            >
-              <option value="">Sin mascota</option>
-              {ownerPets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+              selectedLabel={selectedPet ? selectedPet.name : null}
+              onClear={() => { setPetId(''); setPetSearch(''); }}
+              results={filteredPets.map(p => ({ id: p.id, label: p.name, sub: p.breed || p.species || undefined }))}
+              onSelect={selectPet}
+              emptyMsg={`No se encontraron mascotas para '${petSearch}'`}
+            />
           </div>
 
           <div>
             <label className="block text-slate-600 text-sm font-medium mb-1.5">Producto / Vacuna *</label>
-            <select
-              value={itemId}
-              onChange={e => setItemId(e.target.value)}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              <option value="">Seleccionar producto</option>
-              {pharmacyItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
+            <SearchableField
+              value={itemSearch}
+              onChange={(v) => { setItemSearch(v); setItemFocused(true); if (itemId) setItemId(''); }}
+              onFocus={() => setItemFocused(true)}
+              onBlur={() => setTimeout(() => setItemFocused(false), 150)}
+              focused={itemFocused}
+              placeholder="Buscar producto o vacuna..."
+              selectedLabel={selectedItem ? selectedItem.name : null}
+              onClear={() => { setItemId(''); setItemSearch(''); }}
+              results={filteredItems.map(i => ({ id: i.id, label: i.name, sub: i.category }))}
+              onSelect={selectItem}
+              emptyMsg={`No se encontraron productos para '${itemSearch}'`}
+            />
           </div>
 
           <div>
@@ -518,6 +590,108 @@ function ReminderForm({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+interface SearchResult {
+  id: string;
+  label: string;
+  sub?: string;
+}
+
+function SearchableField({
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  focused,
+  placeholder,
+  selectedLabel,
+  onClear,
+  results,
+  onSelect,
+  emptyMsg,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+  focused: boolean;
+  placeholder: string;
+  selectedLabel: string | null;
+  onClear: () => void;
+  results: SearchResult[];
+  onSelect: (id: string) => void;
+  emptyMsg: string;
+  disabled?: boolean;
+}) {
+  const showDropdown = focused && !selectedLabel;
+  const showSelected = selectedLabel && !value;
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        {showSelected ? (
+          <div className="flex items-center justify-between w-full px-3 py-2 rounded-lg border border-teal-300 bg-teal-50 text-slate-800 text-sm">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Check size={14} className="text-teal-600" />
+              {selectedLabel}
+            </span>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onClear(); }}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              onFocus={onFocus}
+              onBlur={onBlur}
+              disabled={disabled}
+              placeholder={placeholder}
+              className={`w-full pl-9 pr-9 py-2 rounded-lg border text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 ${
+                selectedLabel ? 'border-teal-300 bg-teal-50' : 'border-slate-200'
+              }`}
+            />
+            {value && (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); onChange(''); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      {showDropdown && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+          {results.length === 0 ? (
+            <p className="px-4 py-3 text-slate-400 text-sm">{emptyMsg}</p>
+          ) : (
+            results.map(r => (
+              <button
+                key={r.id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); onSelect(r.id); }}
+                className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-teal-50 transition-colors text-left"
+              >
+                <span className="text-slate-700 text-sm font-medium">{r.label}</span>
+                {r.sub && <span className="text-slate-400 text-xs">{r.sub}</span>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
