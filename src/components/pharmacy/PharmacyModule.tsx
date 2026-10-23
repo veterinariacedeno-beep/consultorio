@@ -14,10 +14,11 @@ import {
   CalendarRange,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { PharmacyItem } from '../../types';
+import type { PharmacyItem, InventoryPurchase } from '../../types';
 import PharmacyItemForm from './PharmacyItemForm';
 import PharmacySaleForm from './PharmacySaleForm';
 import RestockForm from './RestockForm';
+import PurchaseForm from './PurchaseForm';
 import BiweeklyReport from './BiweeklyReport';
 
 const CATEGORY_COLORS: Record<PharmacyItem['category'], string> = {
@@ -29,16 +30,17 @@ const CATEGORY_COLORS: Record<PharmacyItem['category'], string> = {
 
 const LOW_STOCK_THRESHOLD = 5;
 
-type TabType = 'inventory' | 'sales' | 'biweekly';
+type TabType = 'inventory' | 'sales' | 'purchases' | 'biweekly';
 
 export default function PharmacyModule() {
-  const { pharmacyItems, pharmacySales, pharmacyRestocks, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale, restockPharmacyItem, addReminder } = useApp();
+  const { pharmacyItems, pharmacySales, pharmacyRestocks, inventoryPurchases, addPharmacyItem, updatePharmacyItem, deletePharmacyItem, addPharmacySale, deletePharmacySale, restockPharmacyItem, addInventoryPurchase, deleteInventoryPurchase, addReminder } = useApp();
 
   const [tab, setTab] = useState<TabType>('inventory');
   const [search, setSearch] = useState('');
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [saleFormOpen, setSaleFormOpen] = useState(false);
   const [restockFormOpen, setRestockFormOpen] = useState(false);
+  const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
   const [restockItemId, setRestockItemId] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<PharmacyItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -149,6 +151,15 @@ export default function PharmacyModule() {
             Ventas
           </button>
           <button
+            onClick={() => setTab('purchases')}
+            className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+              tab === 'purchases' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <PackagePlus size={14} className="inline mr-1 -mt-0.5" />
+            Compras
+          </button>
+          <button
             onClick={() => setTab('biweekly')}
             className={`flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
               tab === 'biweekly' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
@@ -166,7 +177,7 @@ export default function PharmacyModule() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder={tab === 'inventory' ? 'Buscar producto...' : 'Buscar venta...'}
+                placeholder={tab === 'inventory' ? 'Buscar producto...' : tab === 'purchases' ? 'Buscar compra...' : 'Buscar venta...'}
                 className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -197,6 +208,15 @@ export default function PharmacyModule() {
             className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingCart size={16} /> Registrar Venta
+          </button>
+        )}
+        {tab === 'purchases' && (
+          <button
+            onClick={() => setPurchaseFormOpen(true)}
+            disabled={pharmacyItems.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <PackagePlus size={16} /> Registrar Compra
           </button>
         )}
       </div>
@@ -395,9 +415,18 @@ export default function PharmacyModule() {
         </>
       )}
 
+      {/* Purchases tab */}
+      {tab === 'purchases' && (
+        <PurchasesTab
+          purchases={inventoryPurchases}
+          search={search}
+          onDelete={deleteInventoryPurchase}
+        />
+      )}
+
       {/* Biweekly report tab */}
       {tab === 'biweekly' && (
-        <BiweeklyReport sales={pharmacySales} />
+        <BiweeklyReport sales={pharmacySales} purchases={inventoryPurchases} />
       )}
 
       {itemFormOpen && (
@@ -422,6 +451,14 @@ export default function PharmacyModule() {
           preselectedItemId={restockItemId}
           onSave={handleRestock}
           onClose={() => { setRestockFormOpen(false); setRestockItemId(undefined); }}
+        />
+      )}
+
+      {purchaseFormOpen && (
+        <PurchaseForm
+          items={pharmacyItems}
+          onSave={(purchase) => { addInventoryPurchase(purchase); setPurchaseFormOpen(false); showToast(`Compra registrada: ${purchase.items.length} productos de ${purchase.supplier}`); }}
+          onClose={() => setPurchaseFormOpen(false)}
         />
       )}
     </div>
@@ -453,5 +490,76 @@ function PaymentBadge({ method }: { method: string }) {
     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles[method] ?? 'bg-slate-100 text-slate-600'}`}>
       {method}
     </span>
+  );
+}
+
+function PurchasesTab({ purchases, search, onDelete }: { purchases: InventoryPurchase[]; search: string; onDelete: (id: string) => void }) {
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return [...purchases]
+      .filter(p => p.supplier.toLowerCase().includes(q) || p.invoiceRef.toLowerCase().includes(q))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [purchases, search]);
+
+  const totalInvested = filtered.reduce((sum, p) => sum + p.total, 0);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+        <PackagePlus size={32} className="text-slate-200 mx-auto mb-3" />
+        <p className="text-slate-400 text-sm">
+          {search ? 'Sin resultados.' : 'No hay compras registradas aún.'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center justify-between">
+        <span className="text-blue-700 text-sm font-medium">Total invertido en compras</span>
+        <span className="text-blue-800 font-bold text-lg">${totalInvested.toFixed(2)}</span>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th className="text-left text-slate-500 font-medium px-4 py-3 text-xs uppercase tracking-wide">Fecha</th>
+              <th className="text-left text-slate-500 font-medium px-4 py-3 text-xs uppercase tracking-wide">Proveedor</th>
+              <th className="text-left text-slate-500 font-medium px-4 py-3 text-xs uppercase tracking-wide hidden md:table-cell">Factura</th>
+              <th className="text-center text-slate-500 font-medium px-4 py-3 text-xs uppercase tracking-wide hidden sm:table-cell">Productos</th>
+              <th className="text-right text-slate-500 font-medium px-4 py-3 text-xs uppercase tracking-wide">Total</th>
+              <th className="px-4 py-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtered.map(p => (
+              <tr key={p.id} className="hover:bg-slate-50 transition-colors group">
+                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                  {new Date(p.date + 'T12:00:00').toLocaleDateString('es-PA')}
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-slate-800 font-medium">{p.supplier}</p>
+                  <p className="text-slate-400 text-xs">{p.items.map(i => `${i.itemName} (${i.quantity})`).join(', ')}</p>
+                </td>
+                <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">{p.invoiceRef || '—'}</td>
+                <td className="px-4 py-3 text-center text-slate-600 hidden sm:table-cell">{p.items.length}</td>
+                <td className="px-4 py-3 text-right font-semibold text-slate-800">${p.total.toFixed(2)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => { if (confirm('¿Eliminar esta compra? El stock NO se revertirá.')) onDelete(p.id); }}
+                      className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

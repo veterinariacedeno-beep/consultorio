@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, PharmacyRestock, Reminder, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
+import type { Owner, Pet, ServiceRecord, Invoice, WeeklySnapshot, Appointment, PharmacyItem, PharmacySale, PharmacyRestock, Reminder, InventoryPurchase, Expense, Debt, DebtPayment, ServiceType, CertificateRecord, LabRecord } from '../types';
 import { HELPER_BASE_WEEKLY, HELPER_COMMISSION_RATE, HELPER_BATH_CORTE_FIXED, HELPER_EXPORTACION_COMMISSION } from '../types';
 import { migrateFromLocalStorage, loadData, saveData } from '../utils/storage';
 
@@ -14,6 +14,7 @@ interface AppContextValue {
   pharmacyItems: PharmacyItem[];
   pharmacySales: PharmacySale[];
   pharmacyRestocks: PharmacyRestock[];
+  inventoryPurchases: InventoryPurchase[];
   reminders: Reminder[];
   expenses: Expense[];
   debts: Debt[];
@@ -47,6 +48,8 @@ interface AppContextValue {
   addPharmacySale: (sale: PharmacySale) => void;
   deletePharmacySale: (id: string) => void;
   restockPharmacyItem: (restock: PharmacyRestock) => void;
+  addInventoryPurchase: (purchase: InventoryPurchase) => void;
+  deleteInventoryPurchase: (id: string) => void;
   addReminder: (reminder: Reminder) => void;
   updateReminder: (reminder: Reminder) => void;
   deleteReminder: (id: string) => void;
@@ -128,6 +131,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [pharmacyItems, setPharmacyItems] = useState<PharmacyItem[]>([]);
   const [pharmacySales, setPharmacySales] = useState<PharmacySale[]>([]);
   const [pharmacyRestocks, setPharmacyRestocks] = useState<PharmacyRestock[]>([]);
+  const [inventoryPurchases, setInventoryPurchases] = useState<InventoryPurchase[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -139,7 +143,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       await migrateFromLocalStorage();
-      const [o, p, s, inv, ws, ap, pi, ps, pr, rm, ex, db, cr, lr] = await Promise.all([
+      const [o, p, s, inv, ws, ap, pi, ps, pr, ip, rm, ex, db, cr, lr] = await Promise.all([
         loadData<Owner[]>('vc_owners', []),
         loadData<Pet[]>('vc_pets', []),
         loadData<ServiceRecord[]>('vc_services', []),
@@ -149,6 +153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadData<PharmacyItem[]>('vc_pharmacy_items', []),
         loadData<PharmacySale[]>('vc_pharmacy_sales', []),
         loadData<PharmacyRestock[]>('vc_pharmacy_restocks', []),
+        loadData<InventoryPurchase[]>('vc_inventory_purchases', []),
         loadData<Reminder[]>('vc_reminders', []),
         loadData<Expense[]>('vc_expenses', []),
         loadData<Debt[]>('vc_debts', []),
@@ -165,6 +170,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setPharmacyItems(pi);
       setPharmacySales(ps);
       setPharmacyRestocks(pr);
+      setInventoryPurchases(ip);
       setReminders(rm);
       setExpenses(ex);
       setDebts(migrateDebts(db));
@@ -185,6 +191,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (!loading) saveData('vc_pharmacy_items', pharmacyItems); }, [pharmacyItems, loading]);
   useEffect(() => { if (!loading) saveData('vc_pharmacy_sales', pharmacySales); }, [pharmacySales, loading]);
   useEffect(() => { if (!loading) saveData('vc_pharmacy_restocks', pharmacyRestocks); }, [pharmacyRestocks, loading]);
+  useEffect(() => { if (!loading) saveData('vc_inventory_purchases', inventoryPurchases); }, [inventoryPurchases, loading]);
   useEffect(() => { if (!loading) saveData('vc_reminders', reminders); }, [reminders, loading]);
   useEffect(() => { if (!loading) saveData('vc_expenses', expenses); }, [expenses, loading]);
   useEffect(() => { if (!loading) saveData('vc_debts', debts); }, [debts, loading]);
@@ -279,6 +286,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       )
     );
   }, []);
+
+  const addInventoryPurchase = useCallback((purchase: InventoryPurchase) => {
+    setInventoryPurchases(prev => [...prev, purchase]);
+    setPharmacyItems(prev =>
+      prev.map(item => {
+        const line = purchase.items.find(li => li.itemId === item.id);
+        if (!line) return item;
+        return {
+          ...item,
+          stock: item.stock + line.quantity,
+          costPrice: line.unitCost > 0 ? line.unitCost : item.costPrice,
+        };
+      })
+    );
+  }, []);
+  const deleteInventoryPurchase = useCallback((id: string) =>
+    setInventoryPurchases(prev => prev.filter(x => x.id !== id)), []);
 
   const addReminder = useCallback((r: Reminder) => setReminders(prev => [...prev, r]), []);
   const updateReminder = useCallback((r: Reminder) => setReminders(prev => prev.map(x => x.id === r.id ? r : x)), []);
@@ -447,7 +471,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: AppContextValue = {
     loading,
     owners, pets, services, invoices, weeklySnapshots, appointments,
-    pharmacyItems, pharmacySales, pharmacyRestocks, reminders, expenses, debts,
+    pharmacyItems, pharmacySales, pharmacyRestocks, inventoryPurchases, reminders, expenses, debts,
     certificateRecords, labRecords,
     addOwner, updateOwner, deleteOwner,
     addPet, updatePet, deletePet,
@@ -457,6 +481,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getTodayAppointments, getUpcomingAppointments,
     addPharmacyItem, updatePharmacyItem, deletePharmacyItem,
     addPharmacySale, deletePharmacySale, restockPharmacyItem,
+    addInventoryPurchase, deleteInventoryPurchase,
     addReminder, updateReminder, deleteReminder,
     addExpense, updateExpense, deleteExpense,
     addDebt, updateDebt, deleteDebt, addDebtPayment, addDebtPayments, deleteDebtPayment,

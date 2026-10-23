@@ -225,6 +225,26 @@ export interface Reminder {
   createdAt: string;
 }
 
+export interface PurchaseLineItem {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  unitCost: number;
+  subtotal: number;
+  lotNumber: string;
+  expiryDate: string;
+}
+
+export interface InventoryPurchase {
+  id: string;
+  supplier: string;
+  invoiceRef: string;
+  date: string;
+  items: PurchaseLineItem[];
+  total: number;
+  createdAt: string;
+}
+
 // ===== Laboratory & Certificate types (from Labs repo) =====
 
 export type ResultValue = "POSITIVO" | "NEGATIVO" | "PERSONALIZADO";

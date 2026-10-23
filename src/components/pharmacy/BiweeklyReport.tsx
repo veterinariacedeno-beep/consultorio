@@ -8,11 +8,14 @@ import {
   Download,
   BarChart3,
 } from 'lucide-react';
-import type { PharmacySale } from '../../types';
+import type { PharmacySale, InventoryPurchase } from '../../types';
 
 interface Props {
   sales: PharmacySale[];
+  purchases: InventoryPurchase[];
 }
+
+type ViewMode = 'rentabilidad' | 'flujo';
 
 type PeriodType = 'full' | 'first' | 'second';
 
@@ -61,11 +64,12 @@ function saleGanancia(s: PharmacySale): number {
   return saleVenta(s) - saleCost(s);
 }
 
-export default function BiweeklyReport({ sales }: Props) {
+export default function BiweeklyReport({ sales, purchases }: Props) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [period, setPeriod] = useState<PeriodType>('full');
+  const [viewMode, setViewMode] = useState<ViewMode>('rentabilidad');
 
   const range = useMemo(() => getPeriodRange(year, month, period), [year, month, period]);
   const prevRange = useMemo(() => getPreviousPeriod(year, month, period), [year, month, period]);
@@ -100,6 +104,22 @@ export default function BiweeklyReport({ sales }: Props) {
     const ganancia = totalVenta - totalCost;
     return { totalCost, totalVenta, ganancia };
   }, [prevSales]);
+
+  const periodPurchases = useMemo(() => {
+    return purchases
+      .filter(p => {
+        const d = new Date(p.date + 'T12:00:00');
+        return d >= range.start && d <= range.end;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+  }, [purchases, range]);
+
+  const flowMetrics = useMemo(() => {
+    const totalInvertido = periodPurchases.reduce((sum, p) => sum + p.total, 0);
+    const totalFacturado = periodSales.reduce((sum, s) => sum + saleVenta(s), 0);
+    const balanceNeto = totalFacturado - totalInvertido;
+    return { totalInvertido, totalFacturado, balanceNeto };
+  }, [periodPurchases, periodSales]);
 
   const periodLabel = period === 'full' ? 'Mes Completo' : period === 'first' ? '1ra Quincena (Días 1-15)' : '2da Quincena (Día 16-fin)';
   const prevPeriodLabel = prevRange.period === 'full' ? 'Mes anterior' : prevRange.period === 'first' ? '1ra Quincena anterior' : '2da Quincena anterior';
@@ -155,6 +175,26 @@ export default function BiweeklyReport({ sales }: Props) {
           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download size={16} /> Exportar CSV
+        </button>
+      </div>
+
+      {/* View mode toggle */}
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setViewMode('rentabilidad')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+            viewMode === 'rentabilidad' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Rentabilidad
+        </button>
+        <button
+          onClick={() => setViewMode('flujo')}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+            viewMode === 'flujo' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          Flujo de Mercadería
         </button>
       </div>
 
